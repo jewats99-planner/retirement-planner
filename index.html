@@ -1,0 +1,2734 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Retirement Planner</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+
+ <!-- Chart.js -->
+ <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+ <!-- PDF Export Dependencies -->
+ <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+
+  <style>
+    :root {
+      --bg: #f8fafc;
+      --text: #0f172a;
+      --card: #ffffff;
+      --border: #e2e8f0;
+      --accent: #3b82f6;
+      --success: #10b981;
+      --warn: #f59e0b;
+      --danger: #ef4444;
+      --radius: 16px;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: var(--bg);
+      color: var(--text);
+    }
+
+    header {
+      background: white;
+      padding: 1rem 1.5rem;
+      box-shadow: 0 4px 20px #0001;
+      position: sticky;
+      top: 0;
+      z-index: 10;
+    }
+
+    header h1 {
+      margin:0 ;
+      font-size: 1.9rem;
+      font-weight: 800;
+      background: linear-gradient(90deg, #3b82f6, #8b5cf6);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .app-header h1 {
+      margin: 10;
+      font-size: 2.1rem;
+      font-weight: 800;
+      background: linear-gradient(90deg, #3b82f6, #8b5cf6);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .app-subtitle {
+      margin-top: 0.3rem;
+      font-size: .95rem;
+      opacity: 0.7;
+    }
+
+    .page {
+      max-width: 1300px;
+      margin: 1.6rem auto;
+      padding: 0 1rem 2.5rem;
+    }
+
+    .card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: .9rem;
+      margin-bottom: 0.8rem;
+      box-shadow: 0 6px 18px #0001;
+    }
+
+    .section-toggle {
+      width: 100%;
+      padding: 0.65rem 0.9rem;
+      background: #f1f5f9;
+      border: none;
+      border-radius: 10px;
+      font-size: 1.1rem;
+      font-weight: 700;
+      cursor: pointer;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-top: 0.25rem;
+    }
+
+    .section-row {
+      background: white;
+      border: 1px solid #e2e8f0;
+      border-radius: 12px;
+      padding: 0.8rem;
+      margin-top: 0.35rem;
+      display: none;
+    }
+
+    /* Two-column input layout */
+    .input-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 0.8rem 1.2rem;
+    }
+
+    @media (max-width: 900px) {
+      .input-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 0.5rem 1rem;
+      }
+    }
+
+    .input-row {
+      display: grid;
+      grid-template-columns: 18px auto 1fr;
+      align-items: center;
+      gap: 0.5rem;
+      font-size: 0.85rem;
+      font-weight: 600;
+    }
+
+    .input-label { white-space: nowrap; }
+
+    .input-row input,
+    .input-row select {
+      min-width: 0;
+      width: 100%;
+      padding: 0.45rem 0.5rem;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      font-size: 0.9rem;
+    }
+
+    @media (max-width: 700px) {
+      .input-row {
+        grid-template-columns: 18px 1fr;
+        grid-template-rows: auto auto;
+        row-gap: 0.25rem;
+      }
+      .input-row input,
+      .input-row select {
+        grid-column: 1 / span 2;
+      }
+    }
+
+    /* Tooltip */
+    .tip {
+      display: inline-flex;
+      justify-content: center;
+      align-items: center;
+      width: 16px;
+      height: 16px;
+      border-radius: 50%;
+      font-size: 0.65rem;
+      font-weight: 700;
+      background: #3b82f6;
+      color: #fff;
+      cursor: pointer;
+      flex-shrink: 0;
+      line-height: 1;
+      position: relative;
+    }
+
+    .tip::after {
+      content: attr(data-tip);
+      position: absolute;
+      top: 20px;
+      left: -10px;
+      background: #0f172a;
+      color: white;
+      padding: 6px 8px;
+      border-radius: 8px;
+      font-size: 0.75rem;
+      line-height: 1.3;
+      box-shadow: 0 6px 16px rgba(0, 0, 0, 0.25);
+      opacity: 0;
+      visibility: hidden;
+      transform: translateY(-4px);
+      transition: 0.2s;
+      min-width: 200px;
+      max-width: 260px;
+      z-index: 20;
+    }
+
+    .tip:hover::after {
+      opacity: 1;
+      visibility: visible;
+      transform: translateY(0);
+    }
+
+    .run-btn {
+      width: 100%;
+      padding: .75rem;
+      margin-top: 1.0rem;
+      border-radius: var(--radius);
+      border: none;
+      background: linear-gradient(120deg, #22c55e, #3b82f6, #8b5cf6);
+      color: white;
+      font-size: 1.15rem;
+      font-weight: 700;
+      cursor: pointer;
+    }
+
+    .summary {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.6rem;
+    }
+
+    .summary-item {
+      flex: 1 1 180px;
+      background: #f1f5f9;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 0.5rem 0.6rem;
+      font-size: 0.85rem;
+    }
+
+    .summary-item span {
+      font-size: 0.75rem;
+      opacity: 0.75;
+    }
+
+    .summary-item strong {
+      font-size: 1.05rem;
+      display: block;
+      margin-top: 0.15rem;
+    }
+
+    .summary-item.success strong { color: var(--success); }
+    .summary-item.warn    strong { color: var(--warn); }
+    .summary-item.danger  strong { color: var(--danger); }
+
+    .charts {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 0.6rem;
+      padding: 0.25rem;
+    }
+
+    @media (max-width: 900px) {
+      .charts { grid-template-columns: 1fr; }
+    }
+
+    canvas {
+      background: white;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 0.3rem;
+      max-height: 300px;
+      width: 100%;
+      max-width: 100%;
+      box-sizing: border-box;
+    }
+
+    .table-wrap {
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      overflow-x: auto;
+      margin-top: 1rem;
+    }
+
+    table { width: 100%; border-collapse: collapse; }
+
+    th, td {
+      padding: 0.45rem 0.75rem;
+      border-bottom: 1px solid #e5e7eb;
+      font-size: 0.85rem;
+    }
+
+    th {
+      background: #f1f5f9;
+      text-align: left;
+      font-weight: 700;
+    }
+
+    /* Report overlay */
+    .report-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.55);
+      backdrop-filter: blur(3px);
+      z-index: 9999;
+      justify-content: center;
+      align-items: center;
+    }
+
+    .report-modal {
+      background: #ffffff;
+      padding: 1.2rem 1.4rem;
+      border-radius: 14px;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.35);
+      max-width: 430px;
+      width: 90%;
+      text-align: center;
+    }
+
+    .btn-row {
+      display: flex;
+      justify-content: center;
+      gap: 0.75rem;
+      margin-top: 1rem;
+      flex-wrap: wrap;
+    }
+
+    .btn-small {
+      padding: 0.5rem 1rem;
+      border-radius: 999px;
+      border: 1px solid var(--accent);
+      background: var(--accent);
+      color: #fff;
+      cursor: pointer;
+      font-size: 0.9rem;
+      font-weight: 600;
+    }
+
+    .btn-small.outline {
+      background: #fff;
+      color: var(--accent);
+    }
+
+    .progress-bar {
+      width: 100%;
+      height: 10px;
+      border-radius: 999px;
+      background: #e5e7eb;
+      overflow: hidden;
+      margin-top: 0.75rem;
+    }
+
+    .progress-fill {
+      height: 100%;
+      width: 0%;
+      background: linear-gradient(90deg, #22c55e, #3b82f6, #8b5cf6);
+      transition: width 0.25s linear;
+    }
+
+	.result-caption {
+  	 display: block;
+  	 margin-top: 0.25rem;
+ 	 font-size: 0.7rem;
+ 	 line-height: 1.2;
+ 	 color: #64748b;
+ 	 font-style: normal;
+
+    #row-manual {
+      font-size: 0.9rem;
+      line-height: 1.4;
+    }
+
+body.compact .card {
+  padding: 0.6rem;
+}
+
+body.compact .section-row {
+  padding: 0.5rem;
+}
+
+body.compact .charts canvas {
+  max-height: 220px;
+}
+
+body.compact .summary-item {
+  padding: 0.4rem 0.45rem;
+}
+
+body.compact .input-row {
+  font-size: 0.8rem;
+}
+
+  </style>
+</head>
+
+<body>
+<header style="
+  text-align:center;
+  padding:1.2rem 1rem 1rem;
+  background:white;
+  box-shadow:0 4px 20px #0001;
+  position:sticky;
+  top:0;
+  z-index:10;
+">
+  <h1 style="
+    margin:0;
+    font-size:1.9rem;
+    font-weight:800;
+    background:linear-gradient(90deg,#3b82f6,#8b5cf6);
+    -webkit-background-clip:text;
+    -webkit-text-fill-color:transparent;
+  ">
+    Your Retirement Estimates
+  </h1>
+
+  <div style="
+    font-size:0.9rem;
+    opacity:0.75;
+    margin-top:0.25rem;
+  ">
+    Personalized Monte Carlo Retirement Analysis
+  </div>
+
+  <div style="margin-top:0.6rem;">
+    <button id="compactToggle"
+      style="
+        padding:0.45rem 1.1rem;
+        font-size:0.8rem;
+        border-radius:999px;
+        border:1px solid #c7d2fe;
+        background:#eef2ff;
+        color:#1e40af;
+        cursor:pointer;
+        font-weight:600;
+      ">
+      Compact Mode: OFF
+    </button>
+  </div>
+</header>
+
+<div class="page">
+
+  <!-- ================= INPUTS ================= -->
+  <section class="card">
+
+    <!-- Retirement Basics -->
+    <button class="section-toggle" data-target="row-basics">
+      Retirement Basics
+      <span class="arrow">▼</span>
+    </button>
+
+    <div id="row-basics" class="section-row">
+      <div class="input-grid">
+
+        <div class="input-row">
+          <span class="tip" data-tip="Your current age.">ⓘ</span>
+          <label class="input-label" for="i_age">Current Age</label>
+          <input id="i_age" type="number" value="50">
+        </div>
+
+        <div class="input-row">
+          <span class="tip" data-tip="The age you expect to stop full-time work.">ⓘ</span>
+          <label class="input-label" for="i_retire">Retirement Age</label>
+          <input id="i_retire" type="number" value="65">
+        </div>
+
+        <div class="input-row">
+          <span class="tip" data-tip="How long you want the plan to last.">ⓘ</span>
+          <label class="input-label" for="i_life">Life Expectancy</label>
+          <input id="i_life" type="number" value="85">
+        </div>
+
+        <div class="input-row">
+          <span class="tip" data-tip="Total investable portfolio today across all accounts.">ⓘ</span>
+          <label class="input-label" for="i_bal">Current Balance ($)</label>
+          <input id="i_bal" type="number" value="200000">
+        </div>
+
+      </div>
+    </div>
+
+    <!-- Contributions & Spending -->
+    <button class="section-toggle" data-target="row-spend">
+      Contributions &amp; Spending <span class="arrow">▼</span>
+    </button>
+    <div id="row-spend" class="section-row">
+      <div class="input-grid">
+
+        <div class="input-row">
+          <span class="tip" data-tip="Pre-retirement contribution you save each month.">ⓘ</span>
+          <label class="input-label" for="i_save">Monthly Savings ($)</label>
+          <input id="i_save" type="number" value="300">
+        </div>
+
+        <div class="input-row">
+          <span class="tip" data-tip="First-year retirement spending in today's dollars (before healthcare).">ⓘ</span>
+          <label class="input-label" for="i_spend">Annual Spending ($)</label>
+          <input id="i_spend" type="number" value="80000">
+        </div>
+
+        <div class="input-row">
+          <span class="tip" data-tip="Expected annual Social Security or similar guaranteed benefit.">ⓘ</span>
+          <label class="input-label" for="i_ss">Social Security (annual $)</label>
+          <input id="i_ss" type="number" value="42000">
+        </div>
+
+        <div class="input-row">
+          <span class="tip" data-tip="How much you are willing to cut spending in bad markets (e.g., 20%).">ⓘ</span>
+          <label class="input-label" for="i_flex">Spending Flexibility (%)</label>
+          <input id="i_flex" type="number" value="20">
+        </div>
+
+      </div>
+    </div>
+
+    <!-- Stress Tests -->
+    <button class="section-toggle" data-target="row-stress">
+      Stress Tests (Optional) <span class="arrow">▼</span>
+    </button>
+    <div id="row-stress" class="section-row">
+      <div class="input-grid">
+
+        <div class="input-row">
+          <span class="tip" data-tip="Simulates poor market returns in the first decade of retirement.">ⓘ</span>
+          <label class="input-label" for="i_stressSOR">Bad First 10 Years</label>
+          <select id="i_stressSOR">
+            <option value="0">Off</option>
+            <option value="1">Mild Stress (-20%)</option>
+            <option value="2">Severe Stress (-35%)</option>
+          </select>
+        </div>
+
+        <div class="input-row">
+          <span class="tip" data-tip="Increases general inflation for the entire simulation.">ⓘ</span>
+          <label class="input-label" for="i_stressInf">High Inflation</label>
+          <select id="i_stressInf">
+            <option value="0">Off</option>
+            <option value="1">High Inflation (4%)</option>
+            <option value="2">Extreme Inflation (6%)</option>
+          </select>
+        </div>
+
+        <div class="input-row">
+          <span class="tip" data-tip="Applies a decade of below-normal returns.">ⓘ</span>
+          <label class="input-label" for="i_stressLowRet">Low Return Decade</label>
+          <select id="i_stressLowRet">
+            <option value="0">Off</option>
+            <option value="1">Mild (-2% return)</option>
+            <option value="2">Severe (-4% return)</option>
+          </select>
+        </div>
+
+        <div class="input-row">
+          <span class="tip" data-tip="Simulates a cut to retirement income.">ⓘ</span>
+          <label class="input-label" for="i_stressIncomeShock">Income Shock</label>
+          <select id="i_stressIncomeShock">
+            <option value="0">Off</option>
+            <option value="1">-10% SS Income</option>
+            <option value="2">-20% SS Income</option>
+          </select>
+        </div>
+
+        <div class="input-row">
+          <span class="tip" data-tip="Applies a late-life increase in healthcare costs.">ⓘ</span>
+          <label class="input-label" for="i_stressHealthSpike">Healthcare Spike</label>
+          <select id="i_stressHealthSpike">
+            <option value="0">Off</option>
+            <option value="1">Spike at age 80</option>
+            <option value="2">Spike at age 75</option>
+          </select>
+        </div>
+
+        <div class="input-row">
+          <span class="tip" data-tip="Tests if the portfolio supports a longer lifespan.">ⓘ</span>
+          <label class="input-label" for="i_stressLongLife">Longevity Stress</label>
+          <select id="i_stressLongLife">
+            <option value="0">Off</option>
+            <option value="1">+5 Years</option>
+            <option value="2">+10 Years</option>
+          </select>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- Taxes -->
+    <button class="section-toggle" data-target="row-taxes">
+      Taxes <span class="arrow">▼</span>
+    </button>
+    <div id="row-taxes" class="section-row">
+      <div class="input-grid">
+
+        <div class="input-row">
+          <span class="tip" data-tip="Effective federal tax rate on withdrawals.">ⓘ</span>
+          <label class="input-label" for="i_taxFed">Federal Tax (%)</label>
+          <input id="i_taxFed" type="number" value="15">
+        </div>
+
+        <div class="input-row">
+          <span class="tip" data-tip="State income tax rate (0% if no state income tax).">ⓘ</span>
+          <label class="input-label" for="i_taxState">State Tax (%)</label>
+          <input id="i_taxState" type="number" value="5">
+        </div>
+
+        <div class="input-row">
+          <span class="tip" data-tip="Roth = tax-free in retirement, Traditional = taxed.">ⓘ</span>
+          <label class="input-label" for="i_type">Account Type</label>
+          <select id="i_type">
+            <option value="roth">Roth</option>
+            <option value="traditional">Traditional</option>
+            <option value="taxable">Taxable</option>
+          </select>
+        </div>
+
+        <div class="input-row">
+          <span class="tip" data-tip="Preset mix of stocks/bonds that sets return & volatility.">ⓘ</span>
+          <label class="input-label" for="i_alloc">Allocation Preset</label>
+          <select id="i_alloc">
+            <option value="8,15">Aggressive (90/10)</option>
+            <option value="7,12" selected>Balanced (60/40)</option>
+            <option value="6,8">Conservative (40/60)</option>
+          </select>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- Investment Assumptions -->
+    <button class="section-toggle" data-target="row-invest">
+      Investment Assumptions <span class="arrow">▼</span>
+    </button>
+    <div id="row-invest" class="section-row">
+      <div class="input-grid">
+
+        <div class="input-row">
+          <span class="tip" data-tip="Long-run average annual portfolio return (before inflation).">ⓘ</span>
+          <label class="input-label" for="i_ret">Expected Return (%)</label>
+          <input id="i_ret" type="number" value="7">
+        </div>
+
+        <div class="input-row">
+          <span class="tip" data-tip="Year-to-year volatility (standard deviation) of returns.">ⓘ</span>
+          <label class="input-label" for="i_vol">Volatility (%)</label>
+          <input id="i_vol" type="number" value="12">
+        </div>
+
+        <div class="input-row">
+          <span class="tip" data-tip="General inflation assumption used for spending.">ⓘ</span>
+          <label class="input-label" for="i_inf">General Inflation (%)</label>
+          <input id="i_inf" type="number" value="2.5">
+        </div>
+
+      </div>
+    </div>
+
+    <!-- Healthcare -->
+    <button class="section-toggle" data-target="row-health">
+      Healthcare Costs <span class="arrow">▼</span>
+    </button>
+    <div id="row-health" class="section-row">
+      <div class="input-grid">
+
+        <div class="input-row">
+          <span class="tip" data-tip="Annual healthcare cost before Medicare (age < 65).">ⓘ</span>
+          <label class="input-label" for="i_healthPre">Healthcare Pre-65 ($/yr)</label>
+          <input id="i_healthPre" type="number" value="6000">
+        </div>
+
+        <div class="input-row">
+          <span class="tip" data-tip="Expected annual growth rate in healthcare costs.">ⓘ</span>
+          <label class="input-label" for="i_healthInf">Healthcare Inflation (%)</label>
+          <input id="i_healthInf" type="number" value="6">
+        </div>
+
+      </div>
+    </div>
+
+  </section>
+
+  <!-- Run Monte Carlo -->
+  <section class="card" style="margin-top:1.2rem; padding:0.6rem;">
+
+    <div style="
+      background:#f1f5f9;
+      border-radius:10px;
+      padding:0.65rem 0.9rem;
+      display:grid;
+      grid-template-columns: auto 1fr auto;
+      gap:0.75rem;
+      align-items:center;
+    ">
+
+      <div style="
+        display:flex;
+        align-items:center;
+        gap:0.4rem;
+        font-size:1.0rem;
+        font-weight:700;
+        white-space:nowrap;
+      ">
+        Input # of Simulations to Run
+        <span
+          class="tip"
+          data-tip="Higher numbers produce more stable and accurate results but take longer to run. Typical values range from 2,000 to 20,000 simulations."
+        >ⓘ</span>
+      </div>
+
+      <input
+        id="runSimCount"
+        type="number"
+        min="500"
+        max="40000"
+        step="500"
+        value="6000"
+        style="
+          padding:0.45rem 0.6rem;
+          border:1px solid #e2e8f0;
+          border-radius:10px;
+          font-size:0.95rem;
+          font-weight:600;
+          width:100%;
+          max-width:160px;
+          background:white;
+        "
+      />
+
+      <button
+        id="runBtn"
+        class="run-btn"
+        style="
+          margin:0;
+          padding:0.45rem 1.1rem;
+          font-size:0.95rem;
+          border-radius:10px;
+        "
+      >
+        Run Monte Carlo Simulation
+      </button>
+
+      <input id="i_runs" type="number" value="6000" style="display:none;">
+    </div>
+  </section>
+
+  <!-- Manual -->
+  <section class="card">
+    <button class="section-toggle" data-target="row-manual">
+      User Manual / How This Planner Uses Your Inputs <span class="arrow">▼</span>
+    </button>
+    <div id="row-manual" class="section-row" style="max-height:450px;overflow-y:auto;">
+      <h2>How the Retirement Planner Works</h2>
+      <p>
+        This planner runs Monte Carlo simulations of your retirement path. Each simulation uses your
+        starting balance, savings, spending, taxes, healthcare, and an assumed risk/return profile to
+        generate a unique sequence of yearly returns.
+      </p>
+      <p>
+        <strong>What is a Monte Carlo simulation?</strong><br>
+        A Monte Carlo simulation is a way to test your retirement plan across
+        thousands of different possible future market scenarios. Instead of assuming
+        one fixed rate of return every year, the simulation randomly varies investment
+        returns based on your assumptions for average return and volatility.
+      </p>
+
+      <p>
+        Each simulation represents one possible future path your investments could
+        take. Some paths experience strong early growth, others face poor returns or
+        bad timing. By running many simulations, the planner shows a range of outcomes
+        rather than a single prediction.
+      </p>
+
+      <p>The results help answer practical questions like:</p>
+
+      <ul>
+        <li>What percentage of scenarios last through my full life expectancy?</li>
+        <li>How bad could things reasonably get in poor markets?</li>
+        <li>What does a typical (median) outcome look like?</li>
+      </ul>
+
+      <p>
+        This is not a forecast or guarantee. It is a planning tool designed to help you
+        understand risk, trade-offs, and how changes to savings, spending, or retirement
+        age may improve your chances of success.  This tool does not model required distributions 
+        or tax law. Some accounts have rules that may affect future withdrawals.
+      </p>
+
+      <ul>
+        <li><strong>Accumulation phase:</strong> From your current age until retirement, the model adds monthly savings and applies simulated investment returns.</li>
+        <li><strong>Retirement phase:</strong> After retirement, the model withdraws inflation-adjusted spending and healthcare, net of taxes (for Traditional accounts).</li>
+        <li><strong>Success rate:</strong> The percentage of paths where your portfolio never hits $0 before your life expectancy.</li>
+        <li><strong>Percentiles:</strong> The 10th, 50th, and 90th percentile balances show pessimistic, typical, and optimistic trajectories.</li>
+      </ul>
+    </div>
+  </section>
+
+  <!-- Results Dashboard -->
+  <section id="resultsCard" class="card" style="display:none;">
+    <button class="section-toggle" data-target="row-dash">
+      Results Dashboard <span class="arrow">▼</span>
+    </button>
+    <div id="row-dash" class="section-row">
+      <h2>Results</h2>
+
+      <div class="summary">
+        <div id="succCard" class="summary-item">
+          <span>Success Rate</span>
+          <strong id="succ">—</strong>
+	   <em class="result-caption">
+    	   How often the plan survives under modeled uncertainty
+  	   </em>
+        </div>
+        <div class="summary-item">
+          <span>Safe Withdrawal Rate</span>
+          <strong id="swr">—</strong>
+		<em class="result-caption">
+    		First-year spending relative to portfolio size
+ 		</em>
+        </div>
+        <div class="summary-item">
+          <span>Median Final Balance</span>
+          <strong id="med">—</strong>
+		<em class="result-caption">
+    	  	 Typical ending portfolio outcome
+  	  	 </em>
+        </div>
+      </div>
+
+      <div id="dashboard" class="summary" style="margin-top:1rem;">
+        <div class="summary-item">
+          <span>Portfolio at Retirement (Median)</span>
+          <strong id="dashBal">—</strong>
+		<em class="result-caption">
+    	  	 Typical starting point for retirement
+  	  	 </em>
+        </div>
+	
+        <div class="summary-item">
+          <span>Worst Drawdown (Median Path)</span>
+          <strong id="dashDD">—</strong>
+		<em class="result-caption">
+    	  	 How deep losses may feel along the way
+  	  	 </em>
+
+        </div>
+        <div class="summary-item">
+          <span>Years Until Failure (if any)</span>
+          <strong id="dashFail">—</strong>
+		<em class="result-caption">
+    	  	 When shortfalls occur, if they occur
+  	  	 </em>
+        </div>
+        <div class="summary-item">
+          <span>Inflation-Adjusted First-Year Spending</span>
+          <strong id="dashSpend">—</strong>
+		<em class="result-caption">
+    	  	 Real purchasing power at retirement
+  	  	 </em>
+        </div>
+      </div>
+
+      <p id="resultsExplanation" style="margin-top:1rem;font-size:0.95rem;line-height:1.5;">
+        Run a simulation to see a plain-language explanation of your results here.
+      </p>
+    </div>
+  </section>
+
+  <!-- Charts -->
+  <section class="card">
+    <button class="section-toggle" data-target="row-charts">
+      Charts - Click Chart to Enlarge <span class="arrow">▼</span>
+    </button>
+    <div id="row-charts" class="section-row">
+      <div class="charts">
+        <canvas id="c1"></canvas>
+        <canvas id="c2"></canvas>
+        <canvas id="c3"></canvas>
+        <canvas id="c4"></canvas>
+      </div>
+    </div>
+  </section>
+
+  <!-- Reports -->
+  <section class="card">
+    <button class="section-toggle" data-target="row-reports">
+      Reports <span class="arrow">▼</span>
+    </button>
+
+    <div id="row-reports" class="section-row">
+      <p style="margin-bottom:0.75rem;font-size:0.9rem;opacity:0.8;">
+        Reports use the currently generated charts and simulation results.
+        Please run the simulation before exporting.
+      </p>
+
+      <button id="pdfBtn" class="run-btn" style="background:#1e40af;">
+        Export Simulation PDF
+      </button>
+
+      <button id="fullReportBtn" class="run-btn" style="margin-top:0.8rem;background:#0f766e;">
+        Generate Full Client Report
+      </button>
+    </div>
+  </section>
+
+  <!-- Table -->
+  <section class="card">
+    <button class="section-toggle" data-target="row-table">
+      Year-by-Year Details <span class="arrow">▼</span>
+    </button>
+    <div id="row-table" class="section-row">
+	<button
+ 	 id="csvBtn"
+ 	 class="btn-small"
+ 	 style="margin-bottom:0.6rem; display:none"
+	>
+  Export Table to CSV
+</button>
+
+      <div class="table-wrap">
+        <table id="yearTable">
+          <thead>
+          <tr>
+            <th>Year</th>
+            <th>Age</th>
+            <th>10th</th>
+            <th>Median</th>
+            <th>90th</th>
+            <th>Success</th>
+          </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+</div> <!-- .page -->
+
+<!-- Report Confirm / Progress Overlay -->
+<div id="reportOverlay" class="report-overlay">
+  <div class="report-modal">
+    <h3 id="reportTitle" style="margin-top:0;margin-bottom:0.4rem;">
+      Generate Full Client Report
+    </h3>
+    <p id="reportMessage" style="margin:0.35rem 0 0.75rem;">
+      This report could take a few minutes to generate. Are you ready to run it?
+    </p>
+
+    <div id="reportConfirmButtons" class="btn-row">
+      <button id="reportYes" class="btn-small">Yes, generate</button>
+      <button id="reportNo" class="btn-small outline">No, go back</button>
+    </div>
+
+    <div id="reportProgressArea" style="display:none;">
+      <div class="progress-bar">
+        <div id="reportProgressBar" class="progress-fill"></div>
+      </div>
+      <p id="reportProgressText" style="margin-top:0.5rem;font-size:0.9rem;opacity:0.85;">
+        Preparing report…
+      </p>
+      <div class="btn-row">
+        <button id="reportCancel" class="btn-small outline">Cancel</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+(function () {
+  console.log("IIFE STARTED");
+
+  // ===================== GLOBAL APP NAMESPACE =====================
+  window.App = window.App || {};
+  const App = window.App;
+  App.state = App.state || {};
+  App.utils = App.utils || {};
+  const u = App.utils;
+
+  // ===================== WORKER FLAG =====================
+  const USE_WORKER = true;
+
+  // Global ID helper
+  window.$ = window.$ || function (id) {
+    return document.getElementById(id);
+  };
+
+  // ---------- Utilities ----------
+  u.num = function (v) {
+    return Number(String(v ?? "").replace(/,/g, "")) || 0;
+  };
+
+  u.currency = function (v) {
+    return "$" + Math.round(v || 0).toLocaleString();
+  };
+
+  u.pct = function (v) {
+    return (Number(v) || 0).toFixed(1) + "%";
+  };
+
+  u.formatInputs = function (inp) {
+    return [
+      `Current Age: ${inp.age}`,
+      `Retirement Age: ${inp.retire}`,
+      `Life Expectancy: ${inp.life}`,
+      `Current Balance: ${u.currency(inp.bal)}`,
+      `Monthly Savings: ${u.currency(inp.saveMonthly)}`,
+      `Annual Spending: ${u.currency(inp.spendAnnual)}`,
+      `Social Security: ${u.currency(inp.ssAnnual)}`,
+      `Spending Flexibility: ${inp.flexPct}%`,
+      `Account Type: ${inp.acctType}`,
+      `Federal Tax: ${inp.taxFedPct}%`,
+      `State Tax: ${inp.taxStatePct}%`,
+      `Expected Return: ${inp.expReturnPct}%`,
+      `Volatility: ${inp.volPct}%`,
+      `General Inflation: ${inp.genInflPct}%`,
+      `Healthcare Pre-65: ${u.currency(inp.healthPre)}`,
+      `Healthcare Inflation: ${inp.healthInfPct}%`,
+      `Simulations Run: ${inp.simsCount.toLocaleString()}`
+    ];
+  };
+
+  u.randN = function () {
+    let a = 0, b = 0;
+    while (a === 0) a = Math.random();
+    while (b === 0) b = Math.random();
+    return Math.sqrt(-2 * Math.log(a)) * Math.cos(2 * Math.PI * b);
+  };
+
+  u.today = function () {
+    return new Date().toLocaleDateString(undefined, {
+      year: "numeric",
+      month: "long",
+      day: "numeric"
+    });
+  };
+
+  // Open charts section helper (you referenced it)
+  function openChartsSection() {
+    const row = $("row-charts");
+    if (!row) return;
+    row.style.display = "block";
+    const btn = document.querySelector('.section-toggle[data-target="row-charts"]');
+    if (btn) {
+      const arrow = btn.querySelector(".arrow");
+      if (arrow) arrow.textContent = "▼";
+    }
+  }
+
+  // ===================== WORKER FACTORY (FIXED) =====================
+  App.simWorker = {
+    worker: null,
+
+    ensureWorker() {
+      if (this.worker) return this.worker;
+
+      // IMPORTANT: This string must be ONLY the worker code. No stray JS outside it.
+      const workerCode = `
+self.onmessage = function(e) {
+  const inp = e.data;
+
+  const randN = () => {
+    let a = 0, b = 0;
+    while (a === 0) a = Math.random();
+    while (b === 0) b = Math.random();
+    return Math.sqrt(-2 * Math.log(a)) * Math.cos(2 * Math.PI * b);
+  };
+
+  try {
+    const age      = Number(inp.age) || 0;
+    const retire   = Number(inp.retire) || 0;
+    const life     = Number(inp.life) || 0;
+    const bal0     = Number(inp.bal) || 0;
+
+    const saveAnnual = (Number(inp.saveMonthly) || 0) * 12;
+    const spend0     = Number(inp.spendAnnual) || 0;
+    const ss         = Number(inp.ssAnnual) || 0;
+    const flex       = ((Number(inp.flexPct) || 0) / 100);
+
+    const taxFed     = ((Number(inp.taxFedPct) || 0) / 100);
+    const taxState   = ((Number(inp.taxStatePct) || 0) / 100);
+    const acctType   = inp.acctType || "roth";
+
+    const hp         = Number(inp.healthPre) || 0;
+    const hInf       = ((Number(inp.healthInfPct) || 0) / 100);
+
+    const rExp       = ((Number(inp.expReturnPct) || 0) / 100);
+    const vol        = ((Number(inp.volPct) || 0) / 100);
+
+    const generalInfl = ((Number(inp.genInflPct) || 2.5) / 100);
+    const ssInfl      = 0.02;
+
+    const accYears = Math.max(0, retire - age);
+    const decYears = Math.max(0, life - retire);
+    const totalYears = accYears + decYears;
+
+    if (totalYears <= 0) {
+      self.postMessage({ error: "Invalid age inputs." });
+      return;
+    }
+
+    const runs = Math.max(500, Math.min(40000, Number(inp.simsCount) || 6000));
+
+    const hist  = Array.from({ length: totalYears }, () => []);
+    const fails = Array(decYears).fill(0);
+    const ages  = Array.from({ length: totalYears }, (_, i) => age + i);
+
+    for (let i = 0; i < runs; i++) {
+      let bal = bal0;
+      let peak = bal;
+
+      for (let y = 0; y < accYears; y++) {
+        const ret = rExp + vol * randN();
+        bal = bal * (1 + ret) + saveAnnual;
+        bal = Math.max(0, bal);
+        hist[y].push(bal);
+        peak = Math.max(peak, bal);
+      }
+
+      let failed = false;
+      for (let y = 0; y < decYears; y++) {
+        const t = accYears + y;
+        const ageNow = age + t;
+
+        const healthCost =
+          hp * (ageNow >= 65 ? 0.3 : 1) *
+          Math.pow(1 + hInf, t);
+
+        let spend =
+          spend0 * Math.pow(1 + generalInfl, t) +
+          healthCost -
+          ss * Math.pow(1 + ssInfl, t);
+
+        spend = Math.max(0, spend);
+
+        if (acctType === "traditional") {
+          const rate = taxFed + taxState;
+          if (rate > 0 && rate < 0.9) spend /= (1 - rate);
+        }
+
+        if (flex > 0 && bal < peak * (1 - flex)) {
+          spend *= (1 - flex);
+        }
+
+        const ret = rExp + vol * randN();
+        bal = bal * (1 + ret) - spend;
+        bal = Math.max(0, bal);
+
+        hist[t].push(bal);
+        peak = Math.max(peak, bal);
+
+        if (!failed && bal <= 0) {
+          fails[y]++;
+          failed = true;
+        }
+      }
+    }
+
+    // Percentiles
+    const p10=[], p25=[], p50=[], p75=[], p90=[];
+    for (let y = 0; y < totalYears; y++) {
+      const s = hist[y].slice().sort((a,b)=>a-b);
+      p10[y] = s[Math.floor(runs*0.10)] || 0;
+      p25[y] = s[Math.floor(runs*0.25)] || 0;
+      p50[y] = s[Math.floor(runs*0.50)] || 0;
+      p75[y] = s[Math.floor(runs*0.75)] || 0;
+      p90[y] = s[Math.floor(runs*0.90)] || 0;
+    }
+
+    const totalFails = fails.reduce((a,b)=>a+b,0);
+    const successPct = ((runs - totalFails) / runs) * 100;
+
+    const portAtRet = accYears > 0 ? (p50[accYears - 1] || 0) : bal0;
+    const swrPct = portAtRet > 0 ? (spend0 / portAtRet) * 100 : 0;
+
+    // worst drawdown on median path
+    let worstDD = 0;
+    let peakMed = p50[0] || 0;
+    for (let i = 1; i < p50.length; i++) {
+      if (p50[i] > peakMed) peakMed = p50[i];
+      if (peakMed > 0) {
+        const dd = (p50[i] - peakMed)/peakMed*100;
+        if (dd < worstDD) worstDD = dd;
+      }
+    }
+
+    const failIndex = fails.findIndex(v => v > 0);
+    const failAge = failIndex === -1 ? null : retire + failIndex;
+
+    const adjFirstYearSpend = spend0 * Math.pow(1 + generalInfl, accYears);
+
+    self.postMessage({
+      inputs: inp,
+      runs,
+      p10, p25, p50, p75, p90,
+      fails,
+      successPct,
+      swrPct,
+      portAtRet,
+      worstDrawdownPct: worstDD,
+      failAge,
+      adjFirstYearSpend,
+      accYears,
+      decYears,
+      ages
+    });
+
+  } catch (err) {
+    self.postMessage({ error: err && err.message ? err.message : String(err) });
+  }
+};
+      `.trim();
+
+      const blob = new Blob([workerCode], { type: "application/javascript" });
+      this.worker = new Worker(URL.createObjectURL(blob));
+      return this.worker;
+    }
+  };
+
+  // ===================== INPUTS MODULE =====================
+  App.inputs = {
+    init() {
+      // Collapsibles
+      document.querySelectorAll(".section-toggle").forEach(btn => {
+        const targetId = btn.dataset.target;
+        const row = document.getElementById(targetId);
+        const arrow = btn.querySelector(".arrow");
+        if (!row || !arrow) return;
+
+        // default open
+        row.style.display = "block";
+        arrow.textContent = "▼";
+
+        btn.addEventListener("click", () => {
+          const isOpen = row.style.display !== "none";
+          row.style.display = isOpen ? "none" : "block";
+          arrow.textContent = isOpen ? "►" : "▼";
+        });
+      });
+
+      // Allocation presets
+      const alloc = $("i_alloc");
+      if (alloc) {
+        alloc.addEventListener("change", () => {
+          const [ret, vol] = alloc.value.split(",");
+          const retInput = $("i_ret");
+          const volInput = $("i_vol");
+          if (retInput) retInput.value = ret;
+          if (volInput) volInput.value = vol;
+        });
+      }
+    },
+
+    read() {
+      return {
+        age:        u.num($("i_age")?.value),
+        retire:     u.num($("i_retire")?.value),
+        life:       u.num($("i_life")?.value),
+        bal:        u.num($("i_bal")?.value),
+
+        saveMonthly: u.num($("i_save")?.value),
+        spendAnnual: u.num($("i_spend")?.value),
+        ssAnnual:    u.num($("i_ss")?.value),
+        flexPct:     u.num($("i_flex")?.value),
+
+        taxFedPct:   u.num($("i_taxFed")?.value),
+        taxStatePct: u.num($("i_taxState")?.value),
+        acctType:    $("i_type")?.value || "roth",
+
+        allocPreset:  $("i_alloc")?.value || "7,12",
+        expReturnPct: u.num($("i_ret")?.value),
+        volPct:       u.num($("i_vol")?.value),
+
+        healthPre:    u.num($("i_healthPre")?.value),
+        healthInfPct: u.num($("i_healthInf")?.value),
+
+        simsCount:    u.num($("i_runs")?.value),
+        genInflPct:   u.num($("i_inf")?.value)
+      };
+    }
+  };
+
+  // ===================== RESULTS MODULE =====================
+  App.results = {
+    updateDashboard() {
+      const sim = App.state.simResults;
+      if (!sim) return;
+
+      const succEl = $("succ");
+      const swrEl  = $("swr");
+      const medEl  = $("med");
+      const succCard = $("succCard");
+      const lastMed = sim.p50[sim.p50.length - 1] || 0;
+
+      if (succEl) succEl.textContent = u.pct(sim.successPct);
+      if (swrEl)  swrEl.textContent  = (sim.swrPct || 0).toFixed(2) + "%";
+      if (medEl)  medEl.textContent  = u.currency(lastMed);
+
+      if (succCard) {
+        succCard.classList.remove("success", "warn", "danger");
+        if (sim.successPct >= 90)      succCard.classList.add("success");
+        else if (sim.successPct >= 70) succCard.classList.add("warn");
+        else                           succCard.classList.add("danger");
+      }
+
+      if ($("dashBal"))   $("dashBal").textContent   = u.currency(sim.portAtRet);
+      if ($("dashDD"))    $("dashDD").textContent    = (sim.worstDrawdownPct || 0).toFixed(1) + "%";
+      if ($("dashFail"))  $("dashFail").textContent  = sim.failAge ? sim.failAge + " (age)" : "Never";
+      if ($("dashSpend")) $("dashSpend").textContent = u.currency(sim.adjFirstYearSpend);
+
+      const expl = $("resultsExplanation");
+      if (expl) {
+        expl.textContent =
+          `Based on ${sim.runs.toLocaleString()} Monte Carlo simulations, your plan succeeds ` +
+          `in ${sim.successPct.toFixed(1)}% of scenarios. In the median case, your portfolio at ` +
+          `retirement is ${u.currency(sim.portAtRet)}, and your final median balance at life expectancy ` +
+          `is ${u.currency(lastMed)}. The worst drawdown on the median path is ` +
+          `${(sim.worstDrawdownPct || 0).toFixed(1)}%.`;
+      }
+
+      const resultsCard = $("resultsCard");
+      if (resultsCard) resultsCard.style.display = "block";
+    }
+  };
+
+  // ===================== CHARTS MODULE =====================
+  App.charts = {
+    chart1: null,
+    chart2: null,
+    chart3: null,
+    chart4: null,
+
+    destroy() {
+      ["chart1", "chart2", "chart3", "chart4"].forEach(k => {
+        if (this[k]) {
+          this[k].destroy();
+          this[k] = null;
+        }
+      });
+    },
+
+    draw() {
+      const sim = App.state.simResults;
+      if (!sim || !window.Chart) return;
+
+      this.destroy();
+
+      const labels = sim.ages;
+      const maxY = Math.max(...sim.p90, sim.inputs.bal || 0);
+
+      const axisStyle = {
+        ticks: { font: { size: 12 } },
+        grid: { color: "rgba(0,0,0,0.06)" }
+      };
+
+      // Plugin: boxed legend (no default legend)
+      const percentileLegendBox = {
+        id: "percentileLegendBox",
+        afterDraw(chart) {
+          const { ctx, chartArea } = chart;
+          if (!chartArea) return;
+
+          const x = chartArea.left + 12;
+          const y = chartArea.top + 12;
+          const lineHeight = 14;
+
+          const items = [
+            { label: "90th Percentile (Optimistic)",     color: "#16a34a" },
+            { label: "75th Percentile (Above Average)",  color: "#22c55e" },
+            { label: "Median (50th Percentile)",         color: "#1e3a8a" },
+            { label: "25th Percentile (Below Average)",  color: "#f59e0b" },
+            { label: "10th Percentile (Conservative)",   color: "#dc2626" }
+          ];
+
+          const boxW = 255;
+          const boxH = items.length * lineHeight + 18;
+
+          ctx.save();
+          ctx.fillStyle = "rgba(255,255,255,0.92)";
+          ctx.strokeStyle = "rgba(0,0,0,0.12)";
+          ctx.lineWidth = 1;
+          ctx.fillRect(x - 8, y - 10, boxW, boxH);
+          ctx.strokeRect(x - 8, y - 10, boxW, boxH);
+
+          ctx.font = "12px system-ui";
+          ctx.fillStyle = "#0f172a";
+
+          items.forEach((item, i) => {
+            const yy = y + i * lineHeight;
+            ctx.strokeStyle = item.color;
+            ctx.lineWidth = 3;
+            ctx.beginPath();
+            ctx.moveTo(x, yy - 4);
+            ctx.lineTo(x + 16, yy - 4);
+            ctx.stroke();
+
+            ctx.fillStyle = "#0f172a";
+            ctx.fillText(item.label, x + 24, yy);
+          });
+
+          ctx.restore();
+        }
+      };
+
+      // ---------------- Chart 1: Monte Carlo Range ----------------
+      this.chart1 = new Chart($("c1"), {
+        type: "line",
+        plugins: [percentileLegendBox],
+        data: {
+          labels,
+          datasets: [
+            // Spending bars (visual context only)
+            {
+              type: "bar",
+              label: "Annual Spending (visual)",
+              data: labels.map(age => {
+                if (age < sim.inputs.retire) return null;
+                const years = age - sim.inputs.retire;
+                return (
+                  sim.adjFirstYearSpend *
+                  Math.pow(1 + sim.inputs.genInflPct / 100, years) *
+                  0.15
+                );
+              }),
+              backgroundColor: "rgba(100,116,139,0.28)",
+              borderWidth: 0,
+              barPercentage: 0.9,
+              categoryPercentage: 0.9,
+              order: 10
+            },
+
+            // Percentile lines
+            { label: "90th", data: sim.p90, borderColor: "#16a34a", borderWidth: 2.5, pointRadius: 0, tension: 0.15, order: 1 },
+            { label: "75th", data: sim.p75, borderColor: "#22c55e", borderWidth: 2.5, pointRadius: 0, tension: 0.15, order: 2 },
+            { label: "50th", data: sim.p50, borderColor: "#1e3a8a", borderWidth: 3.8, pointRadius: 0, tension: 0.15, order: 3 },
+            { label: "25th", data: sim.p25, borderColor: "#f59e0b", borderWidth: 2.5, pointRadius: 0, tension: 0.15, order: 2 },
+            { label: "10th", data: sim.p10, borderColor: "#dc2626", borderWidth: 2.5, pointRadius: 0, tension: 0.15, order: 1 },
+
+            // Retirement marker
+            {
+              label: "Retirement",
+              data: labels.map((a, i) =>
+                i === labels.indexOf(sim.inputs.retire) ? maxY : null
+              ),
+              borderColor: "#94a3b8",
+              borderDash: [6, 6],
+              borderWidth: 1.5,
+              pointRadius: 0,
+              order: 0
+            }
+          ]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            title: { display: true, text: "How Your Portfolio May Change Over Time" },
+            legend: { display: false },
+            tooltip: {
+              callbacks: {
+                label: (ctx) => {
+                  const v = ctx.parsed?.y;
+                  if (v == null) return "";
+                  return `${ctx.dataset.label || "Value"}: ${u.currency(v)}`;
+                }
+              }
+            }
+          },
+          scales: {
+            x: axisStyle,
+            y: {
+              ...axisStyle,
+              ticks: {
+                ...axisStyle.ticks,
+                callback: (v) => "$" + Math.round(Number(v) / 1000) + "k"
+              }
+            }
+          }
+        }
+      });
+
+      // ---------------- Chart 2: Median Trajectory ----------------
+      this.chart2 = new Chart($("c2"), {
+        type: "line",
+        data: {
+          labels,
+          datasets: [{
+            label: "Median",
+            data: sim.p50,
+            borderColor: "#2563eb",
+            fill: true,
+            backgroundColor: "rgba(37,99,235,0.15)",
+            pointRadius: 0
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: { title: { display: true, text: "Median Portfolio Trajectory" } },
+          scales: { x: axisStyle, y: axisStyle }
+        }
+      });
+
+      // ---------------- Chart 3: Failure Timing ----------------
+      const bars = [...sim.fails, sim.runs - sim.fails.reduce((a,b)=>a+b,0)];
+      this.chart3 = new Chart($("c3"), {
+        type: "bar",
+        data: {
+          labels: [...sim.fails.map((_,i)=>"Age " + (sim.inputs.retire + i)), "Never"],
+          datasets: [{ data: bars, backgroundColor: "#f59e0b" }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: { title: { display: true, text: "When Portfolios First Run Out" } },
+          scales: { x: axisStyle, y: axisStyle }
+        }
+      });
+
+      // ---------------- Chart 4: Drawdowns ----------------
+      let peak = sim.p50[0] || 0;
+      const dd = sim.p50.map(v => { peak = Math.max(peak, v); return peak ? (v - peak) / peak * 100 : 0; });
+      this.chart4 = new Chart($("c4"), {
+        type: "line",
+        data: {
+          labels,
+          datasets: [{
+            label: "Drawdown (%)",
+            data: dd,
+            borderColor: "#ef4444",
+            borderWidth: 2,
+            pointRadius: 0
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: { title: { display: true, text: "Drawdowns Along the Median Path" } },
+          scales: { x: axisStyle, y: axisStyle }
+        }
+      });
+    }
+  };
+
+  // ===================== TABLE MODULE =====================
+  App.table = {
+    draw() {
+      const sim = App.state.simResults;
+      if (!sim) return;
+	const csvBtn = $("csvBtn");
+	if (csvBtn) csvBtn.style.display = "inline-block";
+      const tbody = document.querySelector("#yearTable tbody");
+      if (!tbody) return;
+
+      tbody.innerHTML = "";
+      let survivors = sim.runs;
+      const startYear = new Date().getFullYear();
+
+      for (let y = 0; y < sim.p50.length; y++) {
+        const tr = document.createElement("tr");
+
+        let successRate;
+        if (y < sim.accYears) {
+          successRate = "—";
+        } else {
+          const idx = y - sim.accYears;
+          survivors -= sim.fails[idx] || 0;
+          successRate = u.pct((survivors / sim.runs) * 100);
+        }
+
+        tr.innerHTML = `
+          <td>${startYear + y}</td>
+          <td>${sim.ages[y]}</td>
+          <td>${u.currency(sim.p10[y])}</td>
+          <td>${u.currency(sim.p50[y])}</td>
+          <td>${u.currency(sim.p90[y])}</td>
+          <td>${successRate}</td>
+        `;
+        tbody.appendChild(tr);
+      }
+    }
+  };
+
+  // ===================== SIMULATION MODULE =====================
+  App.sim = {
+    init() {
+      const btn = $("runBtn");
+      if (btn) {
+        btn.addEventListener("click", () => App.sim.run());
+      }
+
+      // SYNC visible simulation input to hidden i_runs (REQUIRED)
+      const runSimCount = $("runSimCount");
+      const iRuns = $("i_runs");
+      if (runSimCount && iRuns) {
+        runSimCount.addEventListener("input", () => {
+          iRuns.value = runSimCount.value;
+        });
+      }
+    },
+
+    run() {
+      const inp = App.inputs.read();
+
+      if (USE_WORKER && window.Worker) {
+        const worker = App.simWorker.ensureWorker();
+        let responded = false;
+
+        const fallback = () => {
+          if (!responded) {
+            console.warn("Worker did not respond, falling back to inline simulation.");
+            App.sim.runInline(inp);
+          }
+        };
+
+        worker.onmessage = (e) => {
+          responded = true;
+
+          if (e.data && e.data.error) {
+            console.error("Worker error:", e.data.error);
+            App.sim.runInline(inp);
+            return;
+          }
+
+          App.state.simResults = e.data;
+          App.results.updateDashboard();
+          App.charts.draw();
+          App.table.draw();
+          openChartsSection();
+        };
+
+        worker.onerror = (err) => {
+          console.error("Worker runtime error:", err);
+          fallback();
+        };
+
+        worker.postMessage(inp);
+
+        setTimeout(fallback, 150);
+        return;
+      }
+
+      App.sim.runInline(inp);
+    },
+
+    runInline(inpArg) {
+      const inp = inpArg;
+
+      const age      = inp.age;
+      const retire   = inp.retire;
+      const life     = inp.life;
+      const bal0     = inp.bal;
+
+      const saveAnnual = inp.saveMonthly * 12;
+      const spend0     = inp.spendAnnual;
+      const ss         = inp.ssAnnual;
+      const flex       = (inp.flexPct || 0) / 100;
+
+      const taxFed     = (inp.taxFedPct || 0) / 100;
+      const taxState   = (inp.taxStatePct || 0) / 100;
+      const acctType   = inp.acctType || "roth";
+
+      const hp         = inp.healthPre;
+      const hInf       = (inp.healthInfPct || 0) / 100;
+
+      const rExp       = (inp.expReturnPct || 0) / 100;
+      const vol        = (inp.volPct || 0) / 100;
+
+      const generalInfl = (inp.genInflPct || 2.5) / 100;
+      const ssInfl      = 0.02;
+
+      const accYears = Math.max(0, retire - age);
+      const decYears = Math.max(0, life - retire);
+      const totalYears = accYears + decYears;
+
+      if (totalYears <= 0) {
+        alert("Please check your ages: life expectancy should be greater than current age.");
+        return;
+      }
+
+      const runs = (() => {
+        const r = inp.simsCount || 6000;
+        return Math.max(500, Math.min(40000, r));
+      })();
+
+      const hist  = Array.from({ length: totalYears }, () => []);
+      const fails = Array(decYears).fill(0);
+
+      const ages = [];
+      for (let t = 0; t < totalYears; t++) ages[t] = age + t;
+
+      for (let i = 0; i < runs; i++) {
+        let bal = bal0;
+        let peak = bal;
+
+        for (let y = 0; y < accYears; y++) {
+          const ret = rExp + vol * u.randN();
+          bal = bal * (1 + ret) + saveAnnual;
+          if (bal < 0) bal = 0;
+          hist[y].push(bal);
+          if (bal > peak) peak = bal;
+        }
+
+        let failed = false;
+        for (let y = 0; y < decYears; y++) {
+          const t = accYears + y;
+          const ageNow = age + t;
+
+          const healthCost =
+            hp * (ageNow >= 65 ? 0.3 : 1) *
+            Math.pow(1 + hInf, t);
+
+          let spend =
+            spend0 * Math.pow(1 + generalInfl, t) +
+            healthCost -
+            ss * Math.pow(1 + ssInfl, t);
+
+          if (spend < 0) spend = 0;
+
+          if (acctType === "traditional") {
+            const rate = taxFed + taxState;
+            if (rate > 0 && rate < 0.9) spend /= (1 - rate);
+          }
+
+          if (flex > 0 && bal < peak * (1 - flex)) {
+            spend *= (1 - flex);
+          }
+
+          const ret = rExp + vol * u.randN();
+          bal = bal * (1 + ret) - spend;
+          if (bal < 0) bal = 0;
+
+          hist[t].push(bal);
+
+          if (bal > peak) peak = bal;
+          if (!failed && bal <= 0) {
+            fails[y]++;
+            failed = true;
+          }
+        }
+      }
+
+      const p10 = [], p25 = [], p50 = [], p75 = [], p90 = [];
+      for (let y = 0; y < totalYears; y++) {
+        const sorted = hist[y].slice().sort((a, b) => a - b);
+        const idx10 = Math.floor(runs * 0.10);
+        const idx25 = Math.floor(runs * 0.25);
+        const idx50 = Math.floor(runs * 0.50);
+        const idx75 = Math.floor(runs * 0.75);
+        const idx90 = Math.floor(runs * 0.90);
+        p10[y] = sorted[idx10] || 0;
+        p25[y] = sorted[idx25] || 0;
+        p50[y] = sorted[idx50] || 0;
+        p75[y] = sorted[idx75] || 0;
+        p90[y] = sorted[idx90] || 0;
+      }
+
+      const totalFails = fails.reduce((a,b)=>a+b,0);
+      const successPct = ((runs - totalFails) / runs) * 100;
+
+      const portAtRet =
+        accYears > 0 ? (p50[accYears - 1] || 0) : bal0;
+
+      const swrPct =
+        portAtRet > 0 ? (spend0 / portAtRet) * 100 : 0;
+
+      let worstDD = 0;
+      let peakMed = p50[0] || 0;
+      for (let i = 1; i < p50.length; i++) {
+        if (p50[i] > peakMed) peakMed = p50[i];
+        if (peakMed > 0) {
+          const dd = (p50[i] - peakMed)/peakMed*100;
+          if (dd < worstDD) worstDD = dd;
+        }
+      }
+
+      const failIndex = fails.findIndex(v => v > 0);
+      const failAge = failIndex === -1 ? null : retire + failIndex;
+
+      const adjFirstYearSpend =
+        spend0 * Math.pow(1 + generalInfl, accYears);
+
+      App.state.simResults = {
+        inputs: inp,
+        runs,
+        p10,
+        p25,
+        p50,
+        p75,
+        p90,
+        fails,
+        successPct,
+        swrPct,
+        portAtRet,
+        worstDrawdownPct: worstDD,
+        failAge,
+        adjFirstYearSpend,
+        accYears,
+        decYears,
+        ages
+      };
+
+      App.results.updateDashboard();
+      App.charts.draw();
+      App.table.draw();
+      openChartsSection();
+    }
+  };
+
+  // NOTE: You reference reportChart canvas; your PDF function uses App.charts charts for images.
+  // Keeping buildReportMCChart for compatibility with your existing code, without removing it.
+ 
+ function buildReportMCChart(sim) {
+    // If no reportChart exists, just no-op safely.
+    const el = document.getElementById("reportChart");
+    if (!el) return null;
+
+    const ctx = el.getContext("2d");
+    if (window._reportMCChart) window._reportMCChart.destroy();
+
+    const retirementIndex = sim.ages.indexOf(sim.inputs.retire);
+    const maxY = Math.max(...sim.p90, sim.inputs.bal || 0) * 1.05;
+
+    window._reportMCChart = new Chart(ctx, {
+      type: "line",
+      data: {
+        labels: sim.ages,
+        datasets: [
+          {
+            type: "bar",
+            label: "Spending (visual)",
+            data: sim.ages.map(age => {
+              if (age < sim.inputs.retire) return null;
+              const years = age - sim.inputs.retire;
+              return (
+                sim.adjFirstYearSpend *
+                Math.pow(1 + sim.inputs.genInflPct / 100, years) *
+                0.15
+              );
+            }),
+            backgroundColor: "rgba(100,116,139,0.35)",
+            borderWidth: 0,
+            barPercentage: 0.9,
+            categoryPercentage: 0.9
+          },
+          { label: "90th", data: sim.p90, borderColor: "#16a34a", borderWidth: 2.5, pointRadius: 0, tension: 0.15 },
+          { label: "75th", data: sim.p75, borderColor: "#22c55e", borderWidth: 2.5, pointRadius: 0, tension: 0.15 },
+          { label: "Median", data: sim.p50, borderColor: "#1e3a8a", borderWidth: 3.0, pointRadius: 0, tension: 0.15 },
+          { label: "25th", data: sim.p25, borderColor: "#f59e0b", borderWidth: 2.5, pointRadius: 0, tension: 0.15 },
+          { label: "10th", data: sim.p10, borderColor: "#dc2626", borderWidth: 2.5, pointRadius: 0, tension: 0.15 },
+          {
+            label: "Retirement",
+            data: sim.ages.map((_, i) => i === retirementIndex ? maxY : null),
+            borderColor: "#94a3b8",
+            borderDash: [6, 6],
+            borderWidth: 1.5,
+            pointRadius: 0
+          }
+        ]
+      },
+      options: {
+        responsive: false,
+        animation: false,
+        plugins: {
+          legend: { position: "top", labels: { boxWidth: 14 } },
+          title: { display: true, text: "Retirement Portfolio Projection", font: { size: 18, weight: "600" } },
+          subtitle: { display: true, text: "Projected balance over time with uncertainty range", font: { size: 12 } }
+        },
+        scales: {
+          x: { title: { display: true, text: "Age" }, grid: { display: false } },
+          y: {
+            title: { display: true, text: "Portfolio Balance ($)" },
+            ticks: { callback: v => "$" + Math.round(v / 1000) + "k" },
+            grid: { color: "rgba(0,0,0,0.05)" }
+          }
+        }
+      }
+    });
+
+    return window._reportMCChart;
+  }
+
+  // ===================== REPORTS MODULE =====================
+  App.reports = {
+    cancelRequested: false,
+    progressTimer: null,
+
+    init() {
+      const pdfBtn = $("pdfBtn");
+      const fullBtn = $("fullReportBtn");
+      if (pdfBtn)  pdfBtn.addEventListener("click", () => this.exportSimulationPDF());
+      if (fullBtn) fullBtn.addEventListener("click", () => this.askFullReportConfirm());
+
+      const yesBtn = $("reportYes");
+      const noBtn  = $("reportNo");
+      const cancelBtn = $("reportCancel");
+
+      if (yesBtn) yesBtn.addEventListener("click", () => this.startFullReport());
+      if (noBtn)  noBtn.addEventListener("click", () => this.hideOverlay());
+      if (cancelBtn) cancelBtn.addEventListener("click", () => this.cancelRequested = true);
+    },
+
+    exportSimulationPDF() {
+      try {
+        const sim = App.state.simResults;
+        if (!sim) {
+          alert("Please run a simulation first.");
+          return;
+        }
+        if (!window.jspdf) {
+          alert("PDF library is not loaded.");
+          return;
+        }
+
+        const { jsPDF } = window.jspdf;
+        const doc = new jsPDF("p", "mm", "a4");
+        let y = 12;
+
+        const lastMed = sim.p50[sim.p50.length - 1] || 0;
+
+        doc.setFontSize(20);
+        doc.text("Retirement Simulation Summary", 105, y, { align:"center" });
+        y += 8;
+
+        doc.setFontSize(10);
+        doc.text(`Generated on ${u.today()}`, 105, y, { align:"center" });
+        y += 10;
+
+        doc.setFontSize(13);
+        doc.text("Input Assumptions", 10, y);
+        y += 8;
+
+        doc.setFontSize(10);
+        u.formatInputs(sim.inputs).forEach(line => {
+          doc.text(line, 12, y);
+          y += 5;
+        });
+        y += 6;
+
+        doc.setFontSize(12);
+        doc.text( `Simulations:  ${sim.runs.toLocaleString()} `, 10, y); y += 6;
+        doc.text( `Success Rate:  ${sim.successPct.toFixed(1)}% `, 10, y); y += 6;
+        doc.text( `Safe Withdrawal Rate:  ${sim.swrPct.toFixed(2)}% `, 10, y); y += 6;
+        doc.text( `Median Final Balance:  ${u.currency(lastMed)} `, 10, y); y += 6;
+        doc.text( `Portfolio at Retirement (Median):  ${u.currency(sim.portAtRet)} `, 10, y); y += 6;
+        doc.text( `Worst Drawdown (Median Path):  ${sim.worstDrawdownPct.toFixed(1)}% `, 10, y); y += 6;
+        doc.text(
+          `Inflation-Adjusted First-Year Spending:  ${u.currency(sim.adjFirstYearSpend)} `,
+          10, y
+        );
+        y += 12;
+
+        // keep existing call (safe no-op if reportChart missing)
+        buildReportMCChart(sim);
+
+        const charts = [ App.charts.chart1, App.charts.chart2, App.charts.chart3, App.charts.chart4 ];
+
+        for (const ch of charts) {
+          if (!ch) continue;
+          const img = ch.toBase64Image();
+          if (y + 80 > 280) { doc.addPage(); y = 12; }
+          doc.addImage(img, "PNG", 10, y, 190, 80);
+          y += 90;
+        }
+
+        doc.save("Retirement_Simulation_Report.pdf");
+      } catch (err) {
+        console.error("PDF Export Error:", err);
+        alert("PDF export failed; see console for details.");
+      }
+    },
+
+    askFullReportConfirm() {
+      const sim = App.state.simResults;
+      if (!sim) {
+        alert("Please run a simulation first.");
+        return;
+      }
+      const overlay    = $("reportOverlay");
+      const confirmBtns= $("reportConfirmButtons");
+      const progArea   = $("reportProgressArea");
+      const progBar    = $("reportProgressBar");
+      const progText   = $("reportProgressText");
+
+      if (overlay && confirmBtns && progArea && progBar && progText) {
+        overlay.style.display = "flex";
+        confirmBtns.style.display = "flex";
+        progArea.style.display = "none";
+        progBar.style.width = "0%";
+        progText.textContent = "Preparing report…";
+        this.cancelRequested = false;
+      }
+    },
+
+    hideOverlay() {
+      const overlay = $("reportOverlay");
+      if (overlay) overlay.style.display = "none";
+      this.cancelRequested = false;
+      if (this.progressTimer) {
+        clearInterval(this.progressTimer);
+        this.progressTimer = null;
+      }
+    },
+
+    startFullReport() {
+      const confirmBtns = $("reportConfirmButtons");
+      const progArea    = $("reportProgressArea");
+      const progBar     = $("reportProgressBar");
+      const progText    = $("reportProgressText");
+      if (!confirmBtns || !progArea || !progBar || !progText) return;
+
+      confirmBtns.style.display = "none";
+      progArea.style.display    = "block";
+      progBar.style.width       = "5%";
+      progText.textContent =
+        "Generating client report… You can cancel if it takes too long.";
+
+      let progress = 5;
+      this.cancelRequested = false;
+
+      this.progressTimer = setInterval(() => {
+        if (this.cancelRequested) {
+          clearInterval(this.progressTimer);
+          this.progressTimer = null;
+          progText.textContent = "Cancelled. Closing…";
+          setTimeout(() => this.hideOverlay(), 600);
+          return;
+        }
+        progress = Math.min(95, progress + Math.random() * 7);
+        progBar.style.width = progress + "%";
+      }, 300);
+
+      setTimeout(() => this.generateFullClientReport(), 350);
+    },
+
+    // GENERATE FULL CLIENT REPORT (FIXED: valid try/catch, missing helpers added)
+    generateFullClientReport() {
+      try {
+        const sim = App.state.simResults;
+        if (!sim || !window.jspdf) {
+          alert("Please run a simulation first.");
+          this.hideOverlay();
+          return;
+        }
+
+        const { jsPDF } = window.jspdf;
+        const doc = new jsPDF("p", "mm", "a4");
+
+        const PAGE = {
+          w: 210,
+          h: 297,
+          margin: 18,
+          contentW: 174
+        };
+
+        let pageNum = 1;
+        let y = PAGE.margin;
+
+        function addHeader() {
+          doc.setFontSize(9);
+          doc.setTextColor(100);
+          doc.text("Retirement Projection Report — Educational Use Only", PAGE.margin, 10);
+          doc.setTextColor(0);
+        }
+
+        function addFooter() {
+          doc.setFontSize(9);
+          doc.setTextColor(120);
+          doc.text(`Page ${pageNum}`, PAGE.w - PAGE.margin, PAGE.h - 10, { align: "right" });
+          doc.setTextColor(0);
+        }
+
+        function newPage() {
+          addFooter();
+          doc.addPage();
+          pageNum++;
+          y = PAGE.margin;
+          addHeader();
+        }
+
+        function sectionTitle(text) {
+          if (y > PAGE.h - 40) newPage();
+          doc.setFontSize(14);
+          doc.setTextColor(15);
+          doc.text(text, PAGE.margin, y);
+          y += 8;
+        }
+
+        function paragraph(text, size = 11, spacing = 6) {
+          doc.setFontSize(size);
+          doc.setTextColor(40);
+          const lines = doc.splitTextToSize(text, PAGE.contentW);
+          if (y + lines.length * spacing > PAGE.h - PAGE.margin) newPage();
+          doc.text(lines, PAGE.margin, y);
+          y += lines.length * spacing + 2;
+        }
+
+        function sectionSubheader(text) {
+          doc.setFontSize(11);
+          doc.setFont(undefined, "bold");
+          doc.text(text, 10, y);
+          y += 4;
+          doc.setDrawColor(180);
+          doc.line(10, y, 200, y);
+          y += 6;
+          doc.setFont(undefined, "normal");
+        }
+
+        function assumptionRow(label, value) {
+          doc.setFontSize(10);
+          doc.text(label, 12, y);
+          doc.text(String(value), 195, y, { align: "right" });
+          y += 5;
+        }
+
+        function bullet(text) {
+          // simple bullet helper (you referenced bullet() but it didn't exist)
+          const bulletIndent = 6;
+          const wrapW = PAGE.contentW - bulletIndent;
+          doc.setFontSize(11);
+          doc.setTextColor(40);
+
+          const lines = doc.splitTextToSize(text, wrapW);
+          if (y + lines.length * 6 > PAGE.h - PAGE.margin) newPage();
+
+          doc.text("•", PAGE.margin, y);
+          doc.text(lines, PAGE.margin + bulletIndent, y);
+          y += lines.length * 6 + 2;
+        }
+
+        addHeader();
+
+        // ───────────────── PAGE 1: COVER + COMPLIANCE ─────────────────
+        doc.setFontSize(20);
+        doc.setTextColor(20);
+        doc.text("Retirement Projection Summary", PAGE.w / 2, y + 20, { align: "center" });
+
+        y += 36;
+
+        doc.setFontSize(11);
+        doc.setTextColor(60);
+        doc.text(
+          "For educational purposes only — not financial, investment, tax, or legal advice.",
+          PAGE.w / 2,
+          y,
+          { align: "center" }
+        );
+
+        y += 20;
+
+        paragraph(
+          "This report presents a forward-looking retirement projection based on user-provided inputs and probabilistic modeling techniques. Results are illustrative and intended to support planning discussions rather than predict future outcomes.",
+          11
+        );
+
+        // ───────────────── PAGE 2: EXECUTIVE SUMMARY ─────────────────
+        newPage();
+        sectionTitle("Executive Summary");
+
+        paragraph(
+          "This report presents a forward-looking retirement projection based on the inputs you provided and a simulation of many possible future market outcomes. Rather than assuming a single, fixed rate of return, the analysis evaluates how your retirement plan may behave across a wide range of market conditions over time."
+        );
+
+        paragraph(
+          "The goal of this report is not to predict the future, but to help illustrate potential risks, trade-offs, and sensitivities that may affect long-term retirement sustainability."
+        );
+
+        paragraph(
+          "A Monte Carlo simulation is a planning technique that evaluates thousands of possible future scenarios instead of relying on one average or “expected” outcome."
+        );
+
+        paragraph(
+          "Each simulation run represents a different potential sequence of investment returns — some favorable, some unfavorable, and many in between. These scenarios reflect the natural variability and uncertainty of financial markets rather than assuming steady growth every year."
+        );
+
+        paragraph(
+          "By examining the results across many simulations, this approach helps answer practical planning questions such as how often a portfolio lasts through retirement, how sensitive outcomes are to poor market conditions early in retirement, and what range of outcomes may reasonably be expected over time."
+        );
+
+        paragraph(
+          "The charts and tables in this report summarize patterns observed across thousands of simulated scenarios. Individual lines or values do not represent predictions or guarantees. Instead, they illustrate ranges of possible outcomes and the likelihood of different paths based on the assumptions used."
+        );
+
+        paragraph(
+          "Results labeled as “median” represent the midpoint of all simulated outcomes. Higher and lower percentile results illustrate more optimistic and more conservative scenarios, respectively."
+        );
+
+        paragraph(
+          "This report is intended for educational and planning purposes only. It does not provide personalized investment, tax, or legal advice, nor does it recommend specific investment strategies or actions."
+        );
+
+        paragraph(
+          "Actual future outcomes will depend on many factors that cannot be modeled precisely, including market behavior, changes in spending, tax law, health, and personal circumstances."
+        );
+
+        paragraph(
+          "The sections that follow summarize the assumptions used, visualize a range of potential outcomes, and highlight considerations that may be useful when revisiting or adjusting retirement plans over time."
+        );
+
+        // ───────────────── PAGE 3: INPUT ASSUMPTIONS ─────────────────
+        newPage();
+        sectionTitle("Input Assumptions Summary");
+
+        paragraph(
+          "The projections shown in this report are entirely dependent on the assumptions listed below. " +
+          "Changes to any of these inputs may materially affect the results."
+        );
+
+        sectionSubheader("Retirement Profile");
+        assumptionRow("Current Age", sim.inputs.age);
+        assumptionRow("Retirement Age", sim.inputs.retire);
+        assumptionRow("Life Expectancy", sim.inputs.life);
+
+        sectionSubheader("Financial Starting Point");
+        assumptionRow("Starting Portfolio Balance", u.currency(sim.inputs.bal));
+        assumptionRow("Monthly Savings", u.currency(sim.inputs.saveMonthly));
+
+        sectionSubheader("Spending & Income");
+        assumptionRow("Annual Spending (Today's Dollars)", u.currency(sim.inputs.spendAnnual));
+        assumptionRow("Social Security (Annual)", u.currency(sim.inputs.ssAnnual));
+        assumptionRow("Spending Flexibility", sim.inputs.flexPct + "%");
+
+        sectionSubheader("Taxes & Account Type");
+        assumptionRow(
+          "Account Type",
+          sim.inputs.acctType.charAt(0).toUpperCase() + sim.inputs.acctType.slice(1)
+        );
+        assumptionRow("Federal Tax Rate", sim.inputs.taxFedPct + "%");
+        assumptionRow("State Tax Rate", sim.inputs.taxStatePct + "%");
+
+        sectionSubheader("Investment Assumptions");
+        assumptionRow("Expected Return", sim.inputs.expReturnPct.toFixed(1) + "%");
+        assumptionRow("Volatility", sim.inputs.volPct.toFixed(1) + "%");
+        assumptionRow("General Inflation", sim.inputs.genInflPct.toFixed(1) + "%");
+
+        sectionSubheader("Healthcare Assumptions");
+        assumptionRow("Pre-65 Healthcare Cost (Annual)", u.currency(sim.inputs.healthPre));
+        assumptionRow("Healthcare Inflation", sim.inputs.healthInfPct.toFixed(1) + "%");
+
+        sectionSubheader("Simulation Settings");
+        assumptionRow("Monte Carlo Simulations Run", sim.runs.toLocaleString());
+
+        
+// ===================== CHART 1 (Monte Carlo Percentiles) =====================
+// Ensure charts exist (in case user never expanded Charts section)
+if (!App.charts.chart1 || !App.charts.chart1.canvas) {
+  App.charts.draw();
+}
+
+newPage();
+sectionTitle("Monte Carlo Portfolio Range (Percentiles)");
+
+doc.addImage(
+  App.charts.chart1.toBase64Image(),
+  "PNG",
+  PAGE.margin,
+  y,
+  180,
+  80
+);
+y += 90;
+
+paragraph(
+  "This chart shows a range of possible portfolio outcomes across thousands of simulated market scenarios. " +
+  "Percentile lines illustrate how outcomes may vary over time: higher percentiles reflect more optimistic paths, " +
+  "while lower percentiles reflect more conservative paths. The median (50th percentile) represents the midpoint " +
+  "of all simulated results."
+);
+
+paragraph(
+  "These results are not predictions or guarantees. They are illustrations based on the assumptions provided " +
+  "and the uncertainty of future market returns."
+);
+
+
+	// ===================== CHART 2 =====================
+        newPage();
+        sectionTitle("Median Portfolio Trajectory");
+
+        doc.addImage(
+          App.charts.chart2.toBase64Image(),
+          "PNG",
+          PAGE.margin,
+          y,
+          180,
+          80
+        );
+        y += 90;
+
+        paragraph(
+          "This chart illustrates the median outcome across all simulated retirement scenarios. " +
+          "The median trajectory represents the middle result of thousands of modeled futures—" +
+          "half of the simulated outcomes finish above this line, and half finish below it."
+        );
+
+        paragraph(
+          "Unlike the primary projection chart, which highlights a wide range of potential outcomes, " +
+          "this view focuses on a single, representative path. It provides insight into what a " +
+          "typical modeled retirement outcome may look like under the assumptions used."
+        );
+
+        paragraph(
+          "Actual market outcomes are unpredictable and may differ materially from this modeled path."
+        );
+
+        // ===================== CHART 3 =====================
+        newPage();
+        sectionTitle("When Portfolios First Run Out");
+
+        doc.addImage(
+          App.charts.chart3.toBase64Image(),
+          "PNG",
+          PAGE.margin,
+          y,
+          180,
+          80
+        );
+        y += 90;
+
+        paragraph(
+          "This chart shows the distribution of ages at which portfolios first reach zero across " +
+          "all simulated scenarios. It highlights the timing and frequency of shortfall events, " +
+          "not a prediction of when failure will occur."
+        );
+
+        paragraph(
+          "Scenarios labeled “Never” represent simulations in which the portfolio remained positive " +
+          "through the full modeled lifespan."
+        );
+
+        // ===================== CHART 4 =====================
+        newPage();
+        sectionTitle("Drawdowns Along the Median Path");
+
+        doc.addImage(
+          App.charts.chart4.toBase64Image(),
+          "PNG",
+          PAGE.margin,
+          y,
+          180,
+          80
+        );
+        y += 90;
+
+        paragraph(
+          "This chart illustrates portfolio drawdowns along the median simulated path. Drawdowns " +
+          "represent declines from prior portfolio peaks and help visualize the depth and duration " +
+          "of losses experienced during market downturns."
+        );
+
+        paragraph(
+          "Understanding drawdowns is critical for assessing emotional and financial resilience " +
+          "during periods of market stress."
+        );
+
+        // ===================== INTERPRETATION & NEXT STEPS =====================
+        newPage();
+        sectionTitle("Interpretation & Next Steps");
+
+        paragraph(
+          "The results shown in this report illustrate a range of potential retirement outcomes " +
+          "based on the assumptions provided and the inherent uncertainty of future market returns. " +
+          "Rather than producing a single prediction, the analysis highlights how outcomes may vary " +
+          "under different conditions."
+        );
+
+        paragraph(
+          "A higher probability of success suggests greater resilience to adverse market conditions, " +
+          "while lower success rates may indicate sensitivity to factors such as spending levels, " +
+          "retirement timing, or market volatility. Reviewing how changes to key assumptions affect " +
+          "results can help clarify trade-offs and identify areas of flexibility."
+        );
+
+        paragraph(
+          "This report is intended to support understanding and informed discussion. It is not a " +
+          "recommendation or guarantee. Many individuals find it helpful to revisit projections " +
+          "periodically, especially when circumstances change or when considering major financial decisions."
+        );
+
+        doc.setFont(undefined, "bold");
+        doc.setFontSize(11);
+        doc.text("Possible Next Steps", PAGE.margin, y);
+        y += 6;
+        doc.setFont(undefined, "normal");
+
+        bullet("Review whether spending assumptions align with personal priorities and comfort levels");
+        bullet("Evaluate the impact of retiring earlier or later");
+        bullet("Explore how different savings rates or portfolio risk levels affect outcomes");
+        bullet("Consider discussing results with a qualified financial professional for personalized guidance");
+
+        // ===================== YEAR-BY-YEAR PROJECTION TABLE =====================
+        newPage();
+        sectionTitle("Year-by-Year Portfolio Projection");
+
+        paragraph(
+          "The table below summarizes modeled portfolio values by year across selected percentiles. " +
+          "Values represent simulated outcomes rather than predictions and are provided to illustrate " +
+          "how portfolio balances may evolve over time under varying market conditions."
+        );
+
+        doc.setFont(undefined, "bold");
+        doc.setFontSize(9);
+
+        const margin = PAGE.margin;
+        const colX = {
+          year: margin,
+          age: margin + 20,
+          p10: margin + 40,
+          p50: margin + 75,
+          p90: margin + 115,
+          success: margin + 155
+        };
+
+        doc.text("Year", colX.year, y);
+        doc.text("Age", colX.age, y);
+        doc.text("10th %ile", colX.p10, y);
+        doc.text("Median", colX.p50, y);
+        doc.text("90th %ile", colX.p90, y);
+        doc.text("Success", colX.success, y);
+        y += 5;
+
+        doc.setLineWidth(0.3);
+        doc.line(margin, y, 200, y);
+        y += 4;
+
+        doc.setFont(undefined, "normal");
+
+        let survivors = sim.runs;
+        const startYear = new Date().getFullYear();
+
+        for (let i = 0; i < sim.p50.length; i++) {
+          if (y > 260) {
+            newPage();
+            y = 30;
+            doc.setFont(undefined, "bold");
+            doc.setFontSize(9);
+            doc.text("Year", colX.year, y);
+            doc.text("Age", colX.age, y);
+            doc.text("10th %ile", colX.p10, y);
+            doc.text("Median", colX.p50, y);
+            doc.text("90th %ile", colX.p90, y);
+            doc.text("Success", colX.success, y);
+            y += 5;
+            doc.line(margin, y, 200, y);
+            y += 4;
+            doc.setFont(undefined, "normal");
+          }
+
+          let successRate = "—";
+          if (i >= sim.accYears) {
+            const idx = i - sim.accYears;
+            survivors -= sim.fails[idx] || 0;
+            successRate = ((survivors / sim.runs) * 100).toFixed(0) + "%";
+          }
+
+          doc.text(String(startYear + i), colX.year, y);
+          doc.text(String(sim.ages[i]), colX.age, y);
+          doc.text(u.currency(sim.p10[i]), colX.p10, y);
+          doc.text(u.currency(sim.p50[i]), colX.p50, y);
+          doc.text(u.currency(sim.p90[i]), colX.p90, y);
+          doc.text(successRate, colX.success, y);
+          y += 5;
+        }
+
+        // ===================== APPENDIX =====================
+        newPage();
+        sectionTitle("Appendix: How This Retirement Simulation Works");
+
+        paragraph(
+          "The purpose of this simulation is to explore a wide range of possible retirement outcomes " +
+          "based on the assumptions provided. Rather than attempting to predict the future, the model " +
+          "evaluates how different market paths may affect portfolio longevity and sustainability over time."
+        );
+
+        sectionSubheader("What Is a Monte Carlo Simulation?");
+        paragraph(
+          "A Monte Carlo simulation is a technique used to model uncertainty by running thousands of " +
+          "possible future scenarios. Instead of assuming the same investment return every year, each " +
+          "simulation uses randomly generated annual returns based on the expected return and volatility assumptions."
+        );
+
+        paragraph(
+          "Each simulation represents one possible future path. The collection of all simulations shows " +
+          "how outcomes may vary over time."
+        );
+
+        sectionSubheader("How Investment Returns Are Modeled");
+        paragraph(
+          "Annual portfolio returns are modeled using a normal distribution defined by the expected return " +
+          "and volatility assumptions. Returns vary from year to year, reflecting the inherent unpredictability of financial markets."
+        );
+
+        paragraph(
+          "The order in which returns occur matters. Negative returns early in retirement may have a greater " +
+          "impact than negative returns later, a concept often referred to as sequence-of-returns risk."
+        );
+
+        sectionSubheader("How Spending and Withdrawals Are Applied");
+        paragraph(
+          "During retirement, annual spending is withdrawn from the portfolio and adjusted for inflation. " +
+          "Healthcare costs are modeled separately and may grow at a different rate than general inflation."
+        );
+
+        paragraph(
+          "If the portfolio falls below a prior peak and spending flexibility is enabled, withdrawals may " +
+          "be reduced to reflect adaptive spending behavior."
+        );
+
+        sectionSubheader("Taxes and Account Types");
+        paragraph(
+          "For tax-deferred accounts, withdrawals are adjusted to account for estimated federal and state taxes. " +
+          "Roth-style accounts assume tax-free withdrawals, while taxable accounts are treated conservatively."
+        );
+
+        paragraph(
+          "Tax assumptions are simplified and are intended to provide illustrative guidance rather than precise tax planning."
+        );
+
+        sectionSubheader("Interpreting Success Rates");
+        paragraph(
+          "The success rate shown in this report represents the percentage of simulated scenarios in which " +
+          "the portfolio remained above zero for the full modeled lifespan."
+        );
+
+        paragraph(
+          "A higher success rate indicates greater modeled resilience, but does not guarantee real-world results."
+        );
+
+        sectionSubheader("Important Limitations");
+        paragraph(
+          "All simulations are based on assumptions that may not reflect future economic conditions, policy changes, " +
+          "or personal circumstances. This analysis is intended for educational purposes only and should be used as a planning aid."
+        );
+
+        // Final footer on last page
+        addFooter();
+
+        doc.save("Full_Client_Retirement_Report.pdf");
+
+        // Close overlay
+        this.hideOverlay();
+      } catch (err) {
+        console.error("Full Report Error:", err);
+        alert("Full client report failed; see console for details.");
+        this.hideOverlay();
+      }
+    }
+  };
+// ===================== COMPACT MODE =====================
+(function () {
+  let compactOn = false;
+
+  const btn = document.getElementById("compactToggle");
+  if (!btn) return;
+
+  btn.addEventListener("click", () => {
+    compactOn = !compactOn;
+
+    document.querySelectorAll(".section-toggle").forEach(toggle => {
+      const targetId = toggle.dataset.target;
+      const row = document.getElementById(targetId);
+      const arrow = toggle.querySelector(".arrow");
+      if (!row || !arrow) return;
+
+      if (compactOn && targetId === "row-basics") {
+        row.style.display = "block";
+        arrow.textContent = "▼";
+      } else {
+        row.style.display = compactOn ? "none" : "block";
+        arrow.textContent = compactOn ? "►" : "▼";
+      }
+    });
+
+    btn.textContent = compactOn
+      ? "Compact Mode: ON"
+      : "Compact Mode: OFF";
+  });
+})();
+
+
+  App.inputs.init();
+  App.sim.init();
+  App.reports.init();
+
+})();
+</script>
+
+<!-- Chart Image Fullscreen Overlay -->
+<div id="chartImageOverlay" style="
+  position:fixed;
+  inset:0;
+  background:rgba(0,0,0,0.6);
+  display:none;
+  align-items:center;
+  justify-content:center;
+  z-index:10000;
+">
+  <div style="
+    position:relative;
+    background:#fff;
+    width:95%;
+    height:90%;
+    max-width:1400px;
+    border-radius:14px;
+    padding:1rem;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+  ">
+    <div style="
+      position:absolute;
+      top:12px;
+      right:16px;
+      font-size:0.85rem;
+      color:#475569;
+      background:#f1f5f9;
+      padding:4px 10px;
+      border-radius:999px;
+      border:1px solid #e2e8f0;
+      pointer-events:none;
+    ">
+      Press Esc to return
+    </div>
+
+    <img id="chartImageFull" style="
+      max-width:100%;
+      max-height:100%;
+      object-fit:contain;
+    ">
+  </div>
+</div>
+
+<!-- Chart Zoom Overlay (image-based) -->
+<div id="chartZoomOverlay" style="
+  position:fixed; inset:0;
+  background:rgba(0,0,0,0.6);
+  display:none;
+  align-items:center;
+  justify-content:center;
+  z-index:10000;
+">
+  <div style="
+    position:relative;
+    background:#fff;
+    width:95%;
+    height:90%;
+    max-width:1400px;
+    border-radius:14px;
+    padding:1rem;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+  ">
+    <div style="
+      position:absolute;
+      top:12px;
+      right:16px;
+      font-size:0.85rem;
+      color:#475569;
+      background:#f1f5f9;
+      padding:4px 10px;
+      border-radius:999px;
+      border:1px solid #e2e8f0;
+      pointer-events:none;
+    ">Press Esc to return</div>
+
+    <img id="chartZoomImg" style="max-width:100%;max-height:100%;object-fit:contain;" />
+  </div>
+</div>
+
+<script>
+(function () {
+  const overlay = document.getElementById("chartZoomOverlay");
+  const img = document.getElementById("chartZoomImg");
+  if (!overlay || !img) return;
+
+  function close() {
+    overlay.style.display = "none";
+    img.src = "";
+  }
+
+  document.addEventListener("click", (e) => {
+    const canvas = e.target.closest("canvas");
+    if (!canvas) return;
+    if (!["c1","c2","c3","c4"].includes(canvas.id)) return;
+
+    const chart = window.Chart && Chart.getChart(canvas);
+    if (!chart) return;
+
+    img.src = chart.toBase64Image();
+    overlay.style.display = "flex";
+  }, true);
+
+  overlay.addEventListener("click", (e) => {
+    if (e.target === overlay) close();
+  });
+
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "Escape") close();
+  });
+})();
+</script>
+
+<script>
+
+// ===================== CSV EXPORT =====================
+(function setupCSVExport() {
+  const btn = $("csvBtn");
+  if (!btn) return;
+
+  btn.addEventListener("click", () => {
+    const table = document.getElementById("yearTable");
+    if (!table) return;
+
+    let csv = [];
+
+    // ---- Headers ----
+    const headers = Array.from(table.querySelectorAll("thead th"))
+      .map(th => `"${th.textContent.trim()}"`)
+      .join(",");
+    csv.push(headers);
+
+    // ---- Rows ----
+    table.querySelectorAll("tbody tr").forEach(row => {
+      const cells = Array.from(row.children).map(td =>
+        `"${td.textContent.replace(/"/g, '""').trim()}"`
+      );
+      csv.push(cells.join(","));
+    });
+
+    // ---- Download ----
+    const blob = new Blob([csv.join("\n")], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "retirement_projection.csv";
+    document.body.appendChild(a);
+    a.click();
+
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  });
+})();
+
+</script>
+</body>
+</html>
