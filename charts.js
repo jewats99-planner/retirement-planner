@@ -1,0 +1,11 @@
+(function(){
+const App=window.App;
+App.charts={chart1:null,chart2:null,chart3:null,chart4:null,
+destroy(){['chart1','chart2','chart3','chart4'].forEach(k=>{if(this[k]){this[k].destroy();this[k]=null;}});},
+draw(){const s=App.state.simResults;if(!s||!window.Chart)return;this.destroy();const axis={ticks:{font:{size:11}},grid:{color:'rgba(0,0,0,.06)'}};
+this.chart1=new Chart($('c1'),{type:'line',data:{labels:s.ages,datasets:[{label:'90th',data:s.p90,borderColor:'#16a34a',pointRadius:0},{label:'75th',data:s.p75,borderColor:'#22c55e',pointRadius:0},{label:'Median',data:s.p50,borderColor:'#1d4ed8',borderWidth:3,pointRadius:0},{label:'25th',data:s.p25,borderColor:'#f59e0b',pointRadius:0},{label:'10th',data:s.p10,borderColor:'#dc2626',pointRadius:0}]},options:{responsive:true,maintainAspectRatio:false,plugins:{title:{display:true,text:'Portfolio Outcomes by Age'}},scales:{x:axis,y:axis}}});
+this.chart2=new Chart($('c2'),{type:'line',data:{labels:s.ages,datasets:[{label:'Median portfolio',data:s.p50,borderColor:'#2563eb',backgroundColor:'rgba(37,99,235,.14)',fill:true,pointRadius:0}]},options:{responsive:true,maintainAspectRatio:false,plugins:{title:{display:true,text:'Typical Portfolio Path'}},scales:{x:axis,y:axis}}});
+const fail=[...s.fails,s.runs-s.fails.reduce((a,b)=>a+b,0)];this.chart3=new Chart($('c3'),{type:'bar',data:{labels:[...s.fails.map((_,i)=>'Age '+(s.inputs.retire+i)),'Never'],datasets:[{label:'Simulations',data:fail,backgroundColor:'#f59e0b'}]},options:{responsive:true,maintainAspectRatio:false,plugins:{title:{display:true,text:'When Portfolios First Run Out'}},scales:{x:axis,y:axis}}});
+let peak=s.p50[0]||0;const dd=s.p50.map(v=>{peak=Math.max(peak,v);return peak?(v-peak)/peak*100:0});this.chart4=new Chart($('c4'),{type:'line',data:{labels:s.ages,datasets:[{label:'Median-series drawdown %',data:dd,borderColor:'#ef4444',pointRadius:0}]},options:{responsive:true,maintainAspectRatio:false,plugins:{title:{display:true,text:'Portfolio Decline from Prior Median High'}},scales:{x:axis,y:axis}}});
+}}
+})();
