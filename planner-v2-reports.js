@@ -100,7 +100,39 @@
     };
 
     const chart=(name,ch,explain)=>{if(!ch)return;newPage();heading(name);if(explain)para(explain);need(88);doc.addImage(ch.toBase64Image(),'PNG',M,y,CW,82);y+=88;};
-    return {W,H,M,CW,get y(){return y;},set y(v){y=v;},newPage,heading,subheading,para,rows,dashboardBox,chart,footer,need};
+
+    const yearByYearTable=sim=>{
+      const headers=['Year','Age','Category','10th %','Median','90th %','Success'];
+      const widths=[18,13,27,31,31,31,33];
+      const rowsDom=[...document.querySelectorAll('#yearTable tbody tr')];
+      const rowH=6.3,headH=7.2;
+      const drawHeader=continued=>{
+        if(continued){doc.setFontSize(10);doc.setFont(undefined,'bold');doc.setTextColor(51,65,85);doc.text('Year-by-Year Projection — continued',M,y);doc.setFont(undefined,'normal');doc.setTextColor(0);y+=7;}
+        doc.setFillColor(30,64,175);doc.setDrawColor(148,163,184);doc.rect(M,y,CW,headH,'FD');
+        let x=M;doc.setFontSize(7.4);doc.setFont(undefined,'bold');doc.setTextColor(255,255,255);
+        headers.forEach((h,i)=>{doc.text(h,x+2,y+4.8);x+=widths[i];if(i<headers.length-1){doc.setDrawColor(255,255,255);doc.line(x,y,x,y+headH);}});
+        doc.setFont(undefined,'normal');doc.setTextColor(0);y+=headH;
+      };
+      drawHeader(false);
+      rowsDom.forEach((tr,idx)=>{
+        if(y+rowH>H-16){newPage();drawHeader(true);}
+        const c=[...tr.children].map(cell=>cell.textContent.trim());
+        const phase=idx<sim.accYears?'Accumulation':'Retirement';
+        const vals=[c[0]||'',c[1]||'',phase,c[2]||'',c[3]||'',c[4]||'',c[5]||''];
+        if(idx%2===0){doc.setFillColor(248,250,252);doc.rect(M,y,CW,rowH,'F');}
+        doc.setDrawColor(203,213,225);doc.rect(M,y,CW,rowH,'S');
+        let x=M;doc.setFontSize(7.3);doc.setTextColor(15,23,42);
+        vals.forEach((v,i)=>{
+          const right=i>=3;
+          if(right)doc.text(String(v),x+widths[i]-2,y+4.2,{align:'right'});else doc.text(String(v),x+2,y+4.2);
+          x+=widths[i];if(i<vals.length-1){doc.setDrawColor(226,232,240);doc.line(x,y,x,y+rowH);}
+        });
+        y+=rowH;
+      });
+      y+=3;
+    };
+
+    return {W,H,M,CW,get y(){return y;},set y(v){y=v;},newPage,heading,subheading,para,rows,dashboardBox,chart,yearByYearTable,footer,need};
   }
 
   App.reports={init:addReportButtons,
@@ -124,7 +156,7 @@
       w.chart('Typical Portfolio Path',App.charts?.chart2,'This chart focuses on the median simulated portfolio path. It is useful for seeing the general shape of the scenario over time, but it should always be considered alongside the wider outcome ranges and the success rate.');
       w.chart('First Failure Age Distribution',App.charts?.chart3,'When simulations run out of portfolio assets, this chart shows the ages at which those first failures occur. A concentration of failures at younger ages can identify a period where the scenario is particularly vulnerable.');
       w.chart('Portfolio Decline from Prior Median High',App.charts?.chart4,'This chart illustrates declines in the median series from its prior high. It helps put potential drawdowns into context and shows why the timing of poor returns can matter during retirement.');
-      w.newPage();w.heading('Appendix A — Year-by-Year Projection');w.para('The year-by-year table provides the detailed values behind the charts. The 10th, median, and 90th percentile columns show a lower, middle, and higher simulated portfolio outcome for each modeled year.');const trs=[...document.querySelectorAll('#yearTable tbody tr')];doc.setFontSize(7.5);trs.forEach(tr=>{w.need(5);const c=[...tr.children].map(x=>x.textContent.trim());doc.text(c.join('   |   '),w.M,w.y);w.y+=4.3;});
+      w.newPage();w.heading('Appendix A — Year-by-Year Projection');w.para('The year-by-year data below is organized like a spreadsheet so each modeled year can be scanned and compared quickly. Category identifies whether the year is part of the accumulation period or retirement period. The percentile columns show lower, middle, and higher simulated portfolio outcomes, while Success shows the share of simulations still funded at that point.');w.yearByYearTable(sim);
       w.newPage();w.heading('Appendix B — Understanding the Simulation');w.para('Monte Carlo simulation does not predict the market. It repeats the retirement calculation many times using different randomly generated sequences of investment returns based on the return and volatility assumptions entered. The success rate is the percentage of those simulated paths in which the modeled portfolio remained funded through the selected lifetime.');w.para(medianExplanation);w.para('Percentile ranges are included because retirement outcomes are uncertain. A 10th-percentile value is not a guaranteed worst case, and a 90th-percentile value is not a promised best case. They are reference points within the simulated distribution that help show the range produced by the assumptions.');
       w.heading('Appendix C — Important Limitations');w.para('Results depend on the assumptions entered and the simplified modeling rules in this planner. Social Security estimates can change with future earnings, claiming age, law, and inflation. Actual taxes, Medicare costs, investment returns, sequence of returns, inflation, healthcare needs, long-term care, spending behavior, and personal circumstances may differ materially. The model does not replace individualized financial, tax, legal, insurance, or medical advice.');w.para('Use this report to compare scenarios and identify decisions or assumptions that deserve further investigation. Do not treat any single success rate, median value, percentile, or chart as a forecast or guarantee.');
       w.footer();doc.save('Client_Retirement_Report.pdf');
