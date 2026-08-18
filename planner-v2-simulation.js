@@ -27,6 +27,7 @@
           const age = i.age;
           const retire = i.retire;
           const bal0 = i.bal;
+          const ssClaimAge = Number(i.ssClaimAge) || 67;
           const accYears = Math.max(0, retire - age);
           const decYears = Math.max(0, life - retire);
           const totalYears = accYears + decYears;
@@ -57,6 +58,13 @@
           const ssFactor = i.stressIncomeShock === 1
             ? 0.90
             : (i.stressIncomeShock === 2 ? 0.80 : 1.00);
+          const ssCola = 0.02;
+
+          function socialSecurityAtAge(ageNow) {
+            if (!i.ssAnnual || ageNow < ssClaimAge) return 0;
+            const yearsFromToday = Math.max(0, ageNow - age);
+            return i.ssAnnual * ssFactor * Math.pow(1 + ssCola, yearsFromToday);
+          }
 
           for (let n = 0; n < runs; n++) {
             let bal = bal0;
@@ -87,8 +95,9 @@
               if (i.stressHealthSpike === 1 && ageNow >= 80) healthcare *= 1.50;
               if (i.stressHealthSpike === 2 && ageNow >= 75) healthcare *= 1.75;
 
-              const guaranteedIncome =
-                (i.ssAnnual * ssFactor + i.pensionAnnual) * Math.pow(1.02, t);
+              const ssIncome = socialSecurityAtAge(ageNow);
+              const pensionIncome = i.pensionAnnual * Math.pow(1.02, t);
+              const guaranteedIncome = ssIncome + pensionIncome;
 
               let portfolioNeed =
                 i.spendAnnual * Math.pow(1 + inflation, t) + healthcare - guaranteedIncome;
@@ -135,8 +144,9 @@
           const healthAtRet =
             (retire < 65 ? i.healthPre : i.healthPost) * Math.pow(1 + healthInflation, accYears);
 
-          const incomeAtRet =
-            (i.ssAnnual * ssFactor + i.pensionAnnual) * Math.pow(1.02, accYears);
+          const ssAtRet = socialSecurityAtAge(retire);
+          const pensionAtRet = i.pensionAnnual * Math.pow(1.02, accYears);
+          const incomeAtRet = ssAtRet + pensionAtRet;
 
           const spendingAtRet = i.spendAnnual * Math.pow(1 + inflation, accYears);
           const firstPortfolioNeed = Math.max(0, spendingAtRet + healthAtRet - incomeAtRet);
@@ -176,7 +186,9 @@
               worstDrawdownPct: worstDD,
               failAge: failAge,
               adjFirstYearSpend: spendingAtRet,
-              healthAtRet: healthAtRet
+              healthAtRet: healthAtRet,
+              ssAtRet: ssAtRet,
+              ssClaimAge: ssClaimAge
             }
           });
         } catch (err) {
