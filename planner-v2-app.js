@@ -147,11 +147,5 @@
     App.sections.init();
     App.inputs.init();
     if(App.sim)App.sim.init();
-    if(!document.querySelector('script[data-planner-reports]')){
-      const s=document.createElement('script');
-      s.src='planner-v2-reports.js';
-      s.dataset.plannerReports='1';
-      document.body.appendChild(s);
-    }
   });
 })();
