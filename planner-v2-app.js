@@ -40,6 +40,13 @@
     }
   };
 
+  function updateInstructionText(){
+    const items=document.querySelectorAll('.intro ol li');
+    if(items.length>=8){
+      items[7].textContent='View the charts, then use the PDF report buttons to generate reports that can be printed.';
+    }
+  }
+
   function enhanceSocialSecurityInputs(){
     const ss=$('i_ss');
     if(!ss||$('i_ssClaimAge'))return;
@@ -144,6 +151,7 @@
   };
 
   window.addEventListener('DOMContentLoaded',()=>{
+    updateInstructionText();
     App.sections.init();
     App.inputs.init();
     if(App.sim)App.sim.init();
