@@ -37,7 +37,9 @@
     return [
       ['Current age',i.age],['Retirement age',i.retire],['Life expectancy',i.life],
       ['Current balance',u.currency(i.bal)],['Monthly savings',u.currency(i.saveMonthly)],
-      ['Annual retirement spending',u.currency(i.spendAnnual)],['Social Security',u.currency(i.ssAnnual)],
+      ['Annual retirement spending',u.currency(i.spendAnnual)],
+      ['Social Security estimate (today\'s dollars)',u.currency(i.ssAnnual)+'/yr'],
+      ['Social Security claiming age',i.ssClaimAge||67],
       ['Pension / guaranteed income',u.currency(i.pensionAnnual)],['Spending flexibility',i.flexPct+'%'],
       ['Account type',i.acctType],['Federal tax',i.taxFedPct+'%'],['State tax',i.taxStatePct+'%'],
       ['Expected return',i.expReturnPct+'%'],['Volatility',i.volPct+'%'],['General inflation',i.genInflPct+'%'],
@@ -71,7 +73,7 @@
           doc.setFontSize(20);doc.text('Retirement Simulation Summary',105,y,{align:'center'});y+=9;
           doc.setFontSize(9);doc.text('Educational planning tool — not financial, tax, legal, or investment advice.',105,y,{align:'center'});y+=10;
           doc.setFontSize(12);
-          const rows=[['Simulations',sim.runs.toLocaleString()],['Success rate',sim.successPct.toFixed(1)+'%'],['Initial portfolio withdrawal rate',sim.initialWithdrawalPct.toFixed(2)+'%'],['Median portfolio at retirement',u.currency(sim.portAtRet)],['Median final balance',u.currency(last)],['Modeled healthcare cost at retirement',u.currency(sim.healthAtRet)],['Median-series decline',sim.worstDrawdownPct.toFixed(1)+'%'],['First failure age',sim.failAge?String(sim.failAge):'None in modeled horizon']];
+          const rows=[['Simulations',sim.runs.toLocaleString()],['Success rate',sim.successPct.toFixed(1)+'%'],['Initial portfolio withdrawal rate',sim.initialWithdrawalPct.toFixed(2)+'%'],['Median portfolio at retirement',u.currency(sim.portAtRet)],['Median final balance',u.currency(last)],['Modeled healthcare cost at retirement',u.currency(sim.healthAtRet)],['Social Security claiming age',String(sim.inputs.ssClaimAge||67)],['Median-series decline',sim.worstDrawdownPct.toFixed(1)+'%'],['First failure age',sim.failAge?String(sim.failAge):'None in modeled horizon']];
           rows.forEach(r=>{doc.text(r[0]+': '+r[1],12,y);y+=6;});
           y+=4;doc.setFontSize(13);doc.text('Key Assumptions',12,y);y+=7;doc.setFontSize(9);
           assumptions(sim).forEach(r=>{if(y>280){doc.addPage();y=15;}doc.text(r[0]+': '+r[1],14,y);y+=5;});
@@ -95,16 +97,19 @@
           newPage();title('Executive Summary');const last=sim.p50[sim.p50.length-1]||0;
           para(`The plan remained funded through the modeled lifetime in ${sim.successPct.toFixed(1)}% of ${sim.runs.toLocaleString()} simulated market paths. The median portfolio at retirement was ${u.currency(sim.portAtRet)} and the median ending balance was ${u.currency(last)}.`);
           para(`The modeled first-year portfolio withdrawal requirement was ${sim.initialWithdrawalPct.toFixed(2)}% of the median retirement portfolio after incorporating the entered spending, guaranteed income, and healthcare assumptions. Modeled healthcare cost at retirement was ${u.currency(sim.healthAtRet)}.`);
+          if(sim.inputs.ssAnnual>0){
+            para(`Social Security was modeled to begin at age ${sim.inputs.ssClaimAge||67}, using the annual benefit estimate you entered in today's dollars. No Social Security income was applied before that age; the model then applies 2% annual benefit growth.`);
+          }
           title('Input Assumptions');assumptions(sim).forEach(r=>row(r[0],r[1]));
           title('Stress-Test Configuration');para(stressText(sim.inputs));
           title('How to Interpret the Result');
-          if(sim.successPct>=90)para('The plan appears resilient under the assumptions entered. A useful next step is to deliberately make one assumption less favorable at a time — such as earlier retirement, higher spending, lower returns, or higher healthcare costs — to understand the margin of safety.');
-          else if(sim.successPct>=75)para('The plan works in many simulated outcomes but is sensitive enough that modest changes may materially improve or weaken it. Compare spending, retirement age, savings, healthcare, and return assumptions one at a time.');
-          else para('The plan shows a meaningful risk of exhausting the modeled portfolio. Use the planner to test lower spending, increased savings, later retirement, additional guaranteed income, and more conservative healthcare assumptions before relying on the current plan.');
+          if(sim.successPct>=90)para('The plan appears resilient under the assumptions entered. A useful next step is to deliberately make one assumption less favorable at a time — such as earlier retirement, higher spending, lower returns, later Social Security claiming, or higher healthcare costs — to understand the margin of safety.');
+          else if(sim.successPct>=75)para('The plan works in many simulated outcomes but is sensitive enough that modest changes may materially improve or weaken it. Compare spending, retirement age, savings, Social Security claiming age and benefit estimate, healthcare, and return assumptions one at a time.');
+          else para('The plan shows a meaningful risk of exhausting the modeled portfolio. Use the planner to test lower spending, increased savings, later retirement, different Social Security claiming ages using the matching SSA estimates, additional guaranteed income, and more conservative healthcare assumptions before relying on the current plan.');
           const charts=[['Portfolio Outcomes by Age',App.charts?.chart1],['Typical Portfolio Path',App.charts?.chart2],['First Failure Age Distribution',App.charts?.chart3],['Portfolio Decline from Prior Median High',App.charts?.chart4]];
           charts.forEach(([name,ch])=>{if(!ch)return;newPage();title(name);doc.addImage(ch.toBase64Image(),'PNG',M,y,CW,82);y+=88;});
           newPage();title('Year-by-Year Projection');const trs=[...document.querySelectorAll('#yearTable tbody tr')];doc.setFontSize(8);trs.forEach(tr=>{if(y>H-14)newPage();const c=[...tr.children].map(x=>x.textContent.trim());doc.text(c.join('   |   '),M,y);y+=4.5;});
-          newPage();title('Important Limitations');para('Monte Carlo results depend on the assumptions entered and the simplified modeling rules in this planner. Actual taxes, Social Security rules, Medicare costs, investment behavior, sequence of returns, inflation, healthcare needs, long-term care, and personal circumstances may differ materially. This report is intended to support education and scenario exploration and should not be treated as a recommendation or guarantee.');
+          newPage();title('Important Limitations');para('Monte Carlo results depend on the assumptions entered and the simplified modeling rules in this planner. Social Security estimates can change with future earnings, claiming age, law, and inflation. Actual taxes, Medicare costs, investment behavior, sequence of returns, inflation, healthcare needs, long-term care, and personal circumstances may differ materially. This report is intended to support education and scenario exploration and should not be treated as a recommendation or guarantee.');
           doc.setFontSize(8);doc.setTextColor(120);doc.text('Page '+page,W-M,H-8,{align:'right'});doc.save('Client_Retirement_Report.pdf');
         }catch(err){console.error('Full report error',err);alert('Full report generation failed. See the browser console for details.');}
       });
