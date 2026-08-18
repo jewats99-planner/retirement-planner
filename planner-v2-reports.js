@@ -44,13 +44,23 @@
   ];}
 
   function dashboard(sim){const last=sim.p50[sim.p50.length-1]||0;return [
-    ['Success Rate',sim.successPct.toFixed(1)+'%'],['Initial Portfolio Withdrawal Rate',sim.initialWithdrawalPct.toFixed(2)+'%'],
-    ['Median Portfolio at Retirement',u.currency(sim.portAtRet)],['Median Final Balance',u.currency(last)],
-    ['Modeled Healthcare Cost at Retirement',u.currency(sim.healthAtRet)],['Median-Series Decline',sim.worstDrawdownPct.toFixed(1)+'%'],
-    ['First Failure Age',sim.failAge?'Age '+sim.failAge:'None in modeled horizon']
+    {label:'Success Rate',value:sim.successPct.toFixed(1)+'%',caption:'Percent of simulations funded through the modeled lifetime',primary:true,type:'success'},
+    {label:'Initial Portfolio Withdrawal Rate',value:sim.initialWithdrawalPct.toFixed(2)+'%',caption:'First retirement-year portfolio need after modeled income and healthcare',primary:true},
+    {label:'Median Final Balance',value:u.currency(last),caption:'Middle ending balance across all simulated outcomes',primary:true},
+    {label:'Median Portfolio at Retirement',value:u.currency(sim.portAtRet)},
+    {label:'Median-Series Decline',value:sim.worstDrawdownPct.toFixed(1)+'%'},
+    {label:'First Failure Age',value:sim.failAge?'Age '+sim.failAge:'No failures in tested horizon'},
+    {label:'Inflation-Adjusted Spending at Retirement',value:u.currency(sim.adjFirstYearSpend)},
+    {label:'Modeled Healthcare Cost at Retirement',value:u.currency(sim.healthAtRet)}
   ];}
 
   const medianExplanation='The median represents the middle result among all simulated outcomes: half of the results are higher and half are lower. Unlike an average, a median is less affected by a small number of unusually high or low outcomes. In these charts, median values provide a useful view of a typical simulated path, while the surrounding ranges show how widely actual outcomes could vary.';
+
+  function interpretationText(sim){
+    if(sim.successPct>=90)return 'Under the assumptions entered, the scenario appears resilient across most simulated paths. The next useful step is to test the margin of safety by changing one assumption at a time — for example, earlier retirement, higher spending, lower returns, a different Social Security claiming age, or higher healthcare costs.';
+    if(sim.successPct>=75)return 'The scenario remains funded in many simulated paths, but the result is sensitive enough that modest changes may matter. Compare spending, retirement age, savings, Social Security timing, healthcare, and investment assumptions individually to see which choices have the greatest effect.';
+    return 'The scenario shows a meaningful risk of exhausting the modeled portfolio before the end of the planning horizon. Use the planner to explore combinations of lower spending, additional savings, later retirement, different Social Security timing, additional guaranteed income, and more conservative cost assumptions.';
+  }
 
   function addReportButtons(){const grid=document.getElementById('assumptionGrid');if(!grid||document.getElementById('pdfBtn'))return;const row=document.createElement('div');row.style.cssText='display:grid;grid-template-columns:1fr 1fr;gap:.6rem;margin-top:.8rem;grid-column:1/-1';row.innerHTML='<button id="pdfBtn" class="run-btn" style="background:#1e40af">Export Simulation PDF</button><button id="fullReportBtn" class="run-btn" style="background:#0f766e">Generate Full Client Report</button>';grid.parentElement.appendChild(row);document.getElementById('pdfBtn').addEventListener('click',()=>App.reports.exportQuick());document.getElementById('fullReportBtn').addEventListener('click',()=>App.reports.exportFull());}
   function ensureResult(){const sim=App.state.simResults;if(!sim){alert('Please run a simulation first.');return null;}return sim;}
@@ -64,7 +74,31 @@
     const subheading=t=>{need(10);doc.setFontSize(11);doc.setFont(undefined,'bold');doc.setTextColor(51,65,85);doc.text(t,M,y);doc.setFont(undefined,'normal');doc.setTextColor(0);y+=7;};
     const para=t=>{doc.setFontSize(9.5);const lines=doc.splitTextToSize(t,CW);need(lines.length*4.7+4);doc.text(lines,M,y);y+=lines.length*4.7+4;};
     const rows=arr=>{doc.setFontSize(9);arr.forEach((r,idx)=>{need(6);if(idx%2===0){doc.setFillColor(248,250,252);doc.rect(M,y-4,CW,5.5,'F');}doc.setFont(undefined,'bold');doc.text(String(r[0]),M+2,y);doc.setFont(undefined,'normal');doc.text(String(r[1]),W-M-2,y,{align:'right'});y+=5.8;});y+=2;};
-    const dashboardBox=sim=>{heading('Results Dashboard',15);para('These measures summarize the simulation at a glance. They are best used together rather than treating any single number as a prediction.');const data=dashboard(sim);for(let x=0;x<data.length;x+=2){need(17);const pair=data.slice(x,x+2);pair.forEach((r,j)=>{const bx=M+j*(CW/2+2),bw=CW/2-2;doc.setFillColor(241,245,249);doc.roundedRect(bx,y-3,bw,14,2,2,'F');doc.setFontSize(7.5);doc.setTextColor(71,85,105);doc.text(r[0],bx+3,y+1);doc.setFontSize(12);doc.setFont(undefined,'bold');doc.setTextColor(15,23,42);doc.text(r[1],bx+3,y+8);doc.setFont(undefined,'normal');});y+=17;}doc.setTextColor(0);y+=2;};
+
+    const metricCard=(item,x,top,w,h,primary)=>{
+      let fill=[248,250,252],border=[226,232,240],value=[15,23,42];
+      if(item.type==='success'){
+        if(parseFloat(item.value)>=90){fill=[240,253,244];border=[187,247,208];value=[21,128,61];}
+        else if(parseFloat(item.value)>=75){fill=[255,251,235];border=[253,230,138];value=[180,83,9];}
+        else {fill=[254,242,242];border=[254,202,202];value=[185,28,28];}
+      }
+      doc.setFillColor(...fill);doc.setDrawColor(...border);doc.roundedRect(x,top,w,h,2.2,2.2,'FD');
+      doc.setFontSize(primary?7.2:7.4);doc.setTextColor(71,85,105);doc.text(item.label,x+3,top+5,{maxWidth:w-6});
+      doc.setFontSize(primary?12.5:10.5);doc.setFont(undefined,'bold');doc.setTextColor(...value);doc.text(item.value,x+3,top+(primary?12.5:12));doc.setFont(undefined,'normal');
+      if(item.caption){doc.setFontSize(6.7);doc.setTextColor(100,116,139);const lines=doc.splitTextToSize(item.caption,w-6);doc.text(lines,x+3,top+17);}
+      doc.setTextColor(0);
+    };
+
+    const dashboardBox=sim=>{
+      subheading('Results Dashboard');
+      para('These measures mirror the web results dashboard and summarize the simulation at a glance. Read them together rather than treating any single value as a prediction.');
+      const data=dashboard(sim),primary=data.filter(d=>d.primary),secondary=data.filter(d=>!d.primary);
+      need(34);const gap=3,cardW=(CW-gap*2)/3,top=y;
+      primary.forEach((item,j)=>metricCard(item,M+j*(cardW+gap),top,cardW,29,true));y+=33;
+      for(let x=0;x<secondary.length;x+=3){need(20);const pair=secondary.slice(x,x+3),rowW=(CW-gap*(pair.length-1))/pair.length;pair.forEach((item,j)=>metricCard(item,M+j*(rowW+gap),y,rowW,17,false));y+=21;}
+      y+=1;
+    };
+
     const chart=(name,ch,explain)=>{if(!ch)return;newPage();heading(name);if(explain)para(explain);need(88);doc.addImage(ch.toBase64Image(),'PNG',M,y,CW,82);y+=88;};
     return {W,H,M,CW,get y(){return y;},set y(v){y=v;},newPage,heading,subheading,para,rows,dashboardBox,chart,footer,need};
   }
@@ -73,8 +107,8 @@
     exportQuick(){const sim=ensureResult();if(!sim)return;loadJsPDF(()=>{try{
       const {jsPDF}=window.jspdf,doc=new jsPDF('p','mm','letter'),w=makeWriter(doc);const last=sim.p50[sim.p50.length-1]||0;
       doc.setFontSize(22);doc.setFont(undefined,'bold');doc.setTextColor(30,64,175);doc.text('Retirement Projection Summary',w.W/2,30,{align:'center'});doc.setFont(undefined,'normal');doc.setTextColor(0);doc.setFontSize(10);doc.text('Monte Carlo scenario analysis',w.W/2,39,{align:'center'});doc.setFontSize(8.5);doc.text('Educational planning tool — not financial, tax, legal, or investment advice.',w.W/2,48,{align:'center'});w.y=63;
-      w.heading('Input Summary');w.rows(assumptions(sim));w.dashboardBox(sim);
-      w.heading('What the Results Mean');w.para(`Across ${sim.runs.toLocaleString()} simulated market paths, the plan remained funded through the modeled lifetime in ${sim.successPct.toFixed(1)}% of cases. The median portfolio at retirement is ${u.currency(sim.portAtRet)} and the median ending balance is ${u.currency(last)}. Use these results to compare scenarios rather than as a forecast of one expected future.`);
+      w.heading('Input Summary');w.para('The assumptions below define this scenario. The results dashboard is included here so the inputs and their modeled outcome can be reviewed together.');w.rows(assumptions(sim));w.dashboardBox(sim);
+      w.heading('Interpretation & Next Steps');w.para(interpretationText(sim));w.para(`Across ${sim.runs.toLocaleString()} simulated market paths, the plan remained funded through the modeled lifetime in ${sim.successPct.toFixed(1)}% of cases. The median portfolio at retirement is ${u.currency(sim.portAtRet)} and the median ending balance is ${u.currency(last)}. Use these results to compare scenarios rather than as a forecast of one expected future.`);w.subheading('Stress-Test Configuration');w.para(stressText(sim.inputs));
       w.newPage();w.heading('Charts');w.para(medianExplanation);const charts=[['Portfolio Outcomes by Age',App.charts?.chart1],['Typical Portfolio Path',App.charts?.chart2],['First Failure Age Distribution',App.charts?.chart3],['Portfolio Decline from Prior Median High',App.charts?.chart4]];charts.forEach(([n,ch])=>{if(!ch)return;w.subheading(n);w.need(72);doc.addImage(ch.toBase64Image(),'PNG',w.M,w.y,w.CW,68);w.y+=75;});
       w.footer();doc.save('Retirement_Simulation_Report.pdf');
     }catch(err){console.error('Quick PDF error',err);alert('PDF export failed. See the browser console for details.');}});},
@@ -83,9 +117,8 @@
       const {jsPDF}=window.jspdf,doc=new jsPDF('p','mm','letter'),w=makeWriter(doc);const last=sim.p50[sim.p50.length-1]||0;
       doc.setFontSize(25);doc.setFont(undefined,'bold');doc.setTextColor(30,64,175);doc.text('Retirement Plan Analysis Report',w.W/2,39,{align:'center'});doc.setFont(undefined,'normal');doc.setTextColor(0);doc.setFontSize(11);doc.text('Retirement Projection Summary',w.W/2,50,{align:'center'});doc.setFontSize(9);doc.text('Based on the most recent Monte Carlo simulation',w.W/2,59,{align:'center'});doc.text('For educational purposes only — not financial advice.',w.W/2,68,{align:'center'});w.y=88;w.para('This report is designed to help you understand how the assumptions entered into the planner perform across many possible future market paths. It is a scenario-analysis document, not a prediction. Its value is in showing trade-offs, areas of sensitivity, and questions worth exploring before retirement decisions become difficult to change.');
       w.newPage();w.heading('Executive Summary');w.para(`The plan remained funded through the modeled lifetime in ${sim.successPct.toFixed(1)}% of ${sim.runs.toLocaleString()} simulated market paths. The median portfolio at retirement was ${u.currency(sim.portAtRet)}, and the median ending balance was ${u.currency(last)}.`);w.para(`The modeled first-year portfolio withdrawal requirement was ${sim.initialWithdrawalPct.toFixed(2)}% of the median retirement portfolio after incorporating spending, guaranteed income, healthcare, and the simplified tax assumptions entered in the planner.`);if(sim.inputs.ssAnnual>0)w.para(`Social Security was modeled to begin at age ${sim.inputs.ssClaimAge||67}, using the annual benefit estimate entered in today's dollars. No Social Security income was applied before that age; the model then applies 2% annual benefit growth.`);
-      w.heading('Input Summary');w.para('The following assumptions define this scenario. Changing even one of them can materially change the result, which is why the planner is most useful when comparing several reasonable alternatives.');w.rows(assumptions(sim));
-      w.dashboardBox(sim);
-      w.heading('Interpretation & Next Steps');if(sim.successPct>=90)w.para('Under the assumptions entered, the scenario appears resilient across most simulated paths. The next useful step is to test the margin of safety by changing one assumption at a time — for example, earlier retirement, higher spending, lower returns, a different Social Security claiming age, or higher healthcare costs.');else if(sim.successPct>=75)w.para('The scenario remains funded in many simulated paths, but the result is sensitive enough that modest changes may matter. Compare spending, retirement age, savings, Social Security timing, healthcare, and investment assumptions individually to see which choices have the greatest effect.');else w.para('The scenario shows a meaningful risk of exhausting the modeled portfolio before the end of the planning horizon. Use the planner to explore combinations of lower spending, additional savings, later retirement, different Social Security timing, additional guaranteed income, and more conservative cost assumptions.');w.subheading('Stress-Test Configuration');w.para(stressText(sim.inputs));
+      w.heading('Input Summary');w.para('The following assumptions define this scenario. Changing even one of them can materially change the result, which is why the planner is most useful when comparing several reasonable alternatives. The dashboard immediately below mirrors the web results page so the assumptions and outcome can be reviewed together.');w.rows(assumptions(sim));w.dashboardBox(sim);
+      w.heading('Interpretation & Next Steps');w.para(interpretationText(sim));w.subheading('Stress-Test Configuration');w.para(stressText(sim.inputs));
       w.newPage();w.heading('Charts');w.para(medianExplanation);w.para('The charts that follow should be read as a range of possible simulated outcomes. They are most useful for understanding uncertainty, downside exposure, and how the portfolio may behave over time—not for selecting one line as the future that will occur.');
       w.chart('Portfolio Outcomes by Age',App.charts?.chart1,'This chart shows the spread of simulated portfolio values over time. The median traces the middle simulated outcome, while the surrounding ranges illustrate how much results may differ as market sequences change.');
       w.chart('Typical Portfolio Path',App.charts?.chart2,'This chart focuses on the median simulated portfolio path. It is useful for seeing the general shape of the scenario over time, but it should always be considered alongside the wider outcome ranges and the success rate.');
