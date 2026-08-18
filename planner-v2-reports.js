@@ -32,7 +32,27 @@
   const medianExplanation='The median represents the middle result among all simulated outcomes: half of the results are higher and half are lower. Unlike an average, a median is less affected by a small number of unusually high or low outcomes. In these charts, median values provide a useful view of a typical simulated path, while the surrounding ranges show how widely actual outcomes could vary.';
   function interpretationText(sim){if(sim.successPct>=90)return 'Under the assumptions entered, the scenario appears resilient across most simulated paths. The next useful step is to test the margin of safety by changing one assumption at a time — for example, earlier retirement, higher spending, lower returns, a different Social Security claiming age, or higher healthcare costs.';if(sim.successPct>=75)return 'The scenario remains funded in many simulated paths, but the result is sensitive enough that modest changes may matter. Compare spending, retirement age, savings, Social Security timing, healthcare, and investment assumptions individually to see which choices have the greatest effect.';return 'The scenario shows a meaningful risk of exhausting the modeled portfolio before the end of the planning horizon. Use the planner to explore combinations of lower spending, additional savings, later retirement, different Social Security timing, additional guaranteed income, and more conservative cost assumptions.';}
 
-  function addReportButtons(){const grid=document.getElementById('assumptionGrid');if(!grid||document.getElementById('pdfBtn'))return;const row=document.createElement('div');row.style.cssText='display:grid;grid-template-columns:1fr 1fr;gap:.6rem;margin-top:.8rem;grid-column:1/-1';row.innerHTML='<button id="pdfBtn" class="run-btn" style="background:#1e40af">Export Simulation PDF</button><button id="fullReportBtn" class="run-btn" style="background:#0f766e">Generate Full Client Report</button>';grid.parentElement.appendChild(row);document.getElementById('pdfBtn').addEventListener('click',()=>App.reports.exportQuick());document.getElementById('fullReportBtn').addEventListener('click',()=>App.reports.exportFull());}
+  function addReportButtons(){
+    if(document.getElementById('pdfBtn'))return;
+    const chartsRow=document.getElementById('row-charts');
+    const chartsCard=chartsRow?chartsRow.closest('section.card'):null;
+    if(!chartsCard)return;
+    const card=document.createElement('section');
+    card.id='reportActionsCard';
+    card.className='card';
+    card.style.display='none';
+    const row=document.createElement('div');
+    row.style.cssText='display:grid;grid-template-columns:1fr 1fr;gap:.6rem;';
+    row.innerHTML='<button id="pdfBtn" class="run-btn" style="background:#1e40af">Export Simulation PDF</button><button id="fullReportBtn" class="run-btn" style="background:#0f766e">Generate Full Client Report</button>';
+    card.appendChild(row);
+    chartsCard.insertAdjacentElement('afterend',card);
+    document.getElementById('pdfBtn').addEventListener('click',()=>App.reports.exportQuick());
+    document.getElementById('fullReportBtn').addEventListener('click',()=>App.reports.exportFull());
+    const resultsCard=document.getElementById('resultsCard');
+    const syncVisibility=()=>{card.style.display=App.state.simResults?'block':'none';};
+    syncVisibility();
+    if(resultsCard)new MutationObserver(syncVisibility).observe(resultsCard,{attributes:true,attributeFilter:['style']});
+  }
   function ensureResult(){const sim=App.state.simResults;if(!sim){alert('Please run a simulation first.');return null;}return sim;}
 
   function makeWriter(doc,opts={}){
