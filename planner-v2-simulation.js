@@ -209,10 +209,14 @@
 
   App.sim = {
     worker: null,
+    _initialized: false,
 
     init() {
+      if (this._initialized) return;
       const btn = $('runBtn');
-      if (btn) btn.addEventListener('click', () => this.run());
+      if (!btn) return;
+      btn.addEventListener('click', () => App.sim.run());
+      this._initialized = true;
     },
 
     resetUi(message) {
@@ -234,81 +238,98 @@
     },
 
     run() {
-      const inputs = App.inputs.read();
-      const errors = App.inputs.validate(inputs);
-
-      if (errors.length) {
-        alert(errors.join('\n'));
-        return;
-      }
-
-      this.stopWorker();
-
-      const btn = $('runBtn');
-      const status = $('simStatus');
-      const progress = $('simProgress');
-      const fill = $('simProgressFill');
-
-      if (btn) {
-        btn.disabled = true;
-        btn.textContent = 'Running simulations…';
-      }
-      if (status) {
-        status.textContent = 'Testing ' + inputs.simsCount.toLocaleString() + ' possible retirement paths…';
-      }
-      if (progress) progress.style.display = 'block';
-      if (fill) fill.style.width = '2%';
-
       try {
-        this.worker = workerFactory();
-      } catch (err) {
-        console.error('Worker creation error:', err);
-        this.resetUi('Could not start the simulation engine in this browser.');
-        return;
-      }
+        if (!App.inputs || typeof App.inputs.read !== 'function') {
+          throw new Error('Input module is not available.');
+        }
 
-      this.worker.onmessage = (event) => {
-        const msg = event.data || {};
+        const inputs = App.inputs.read();
+        const errors = App.inputs.validate(inputs);
 
-        if (msg.type === 'progress') {
-          if (fill) fill.style.width = Math.max(2, msg.value || 0) + '%';
+        if (errors.length) {
+          alert(errors.join('\n'));
           return;
         }
 
-        if (msg.type === 'error') {
-          console.error('Simulation worker error:', msg.message);
-          this.resetUi('Simulation error: ' + msg.message);
-          this.stopWorker();
-          return;
-        }
-
-        if (msg.type === 'result') {
-          App.state.simResults = msg.data;
-          if (fill) fill.style.width = '100%';
-          if (status) {
-            status.textContent = 'Simulation complete. Change any input and run again to compare another option.';
-          }
-          if (btn) {
-            btn.disabled = false;
-            btn.textContent = 'Run Monte Carlo Simulation';
-          }
-
-          App.results.update();
-          App.charts.draw();
-          App.table.draw();
-          App.sections.open('row-dash');
-          this.stopWorker();
-        }
-      };
-
-      this.worker.onerror = (event) => {
-        console.error('Worker runtime error:', event);
-        const detail = event && event.message ? event.message : 'Unknown worker error';
-        this.resetUi('Simulation engine error: ' + detail);
         this.stopWorker();
-      };
 
-      this.worker.postMessage(inputs);
+        const btn = $('runBtn');
+        const status = $('simStatus');
+        const progress = $('simProgress');
+        const fill = $('simProgressFill');
+
+        if (btn) {
+          btn.disabled = true;
+          btn.textContent = 'Running simulations…';
+        }
+        if (status) {
+          status.textContent = 'Testing ' + inputs.simsCount.toLocaleString() + ' possible retirement paths…';
+        }
+        if (progress) progress.style.display = 'block';
+        if (fill) fill.style.width = '2%';
+
+        this.worker = workerFactory();
+
+        this.worker.onmessage = (event) => {
+          const msg = event.data || {};
+
+          if (msg.type === 'progress') {
+            if (fill) fill.style.width = Math.max(2, msg.value || 0) + '%';
+            return;
+          }
+
+          if (msg.type === 'error') {
+            console.error('Simulation worker error:', msg.message);
+            this.resetUi('Simulation error: ' + msg.message);
+            this.stopWorker();
+            return;
+          }
+
+          if (msg.type === 'result') {
+            App.state.simResults = msg.data;
+            if (fill) fill.style.width = '100%';
+            if (status) status.textContent = 'Simulation complete. Change any input and run again to compare another option.';
+            if (btn) {
+              btn.disabled = false;
+              btn.textContent = 'Run Monte Carlo Simulation';
+            }
+
+            try {
+              if (App.results && typeof App.results.update === 'function') App.results.update();
+              if (App.charts && typeof App.charts.draw === 'function') App.charts.draw();
+              if (App.table && typeof App.table.draw === 'function') App.table.draw();
+              if (App.sections && typeof App.sections.open === 'function') App.sections.open('row-dash');
+            } catch (renderErr) {
+              console.error('Simulation completed, but rendering failed:', renderErr);
+              if (status) status.textContent = 'Simulation complete, but part of the results display encountered an error: ' + (renderErr.message || renderErr);
+            }
+
+            this.stopWorker();
+          }
+        };
+
+        this.worker.onerror = (event) => {
+          console.error('Worker runtime error:', event);
+          const detail = event && event.message ? event.message : 'Unknown worker error';
+          this.resetUi('Simulation engine error: ' + detail);
+          this.stopWorker();
+        };
+
+        this.worker.postMessage(inputs);
+      } catch (err) {
+        console.error('Simulation start error:', err);
+        this.resetUi('Simulation could not start: ' + (err && err.message ? err.message : String(err)));
+      }
     }
   };
+
+  function ensureSimulationInitialized() {
+    if (App.sim) App.sim.init();
+  }
+
+  if (document.readyState === 'loading') {
+    window.addEventListener('DOMContentLoaded', ensureSimulationInitialized);
+  } else {
+    ensureSimulationInitialized();
+  }
 })();
